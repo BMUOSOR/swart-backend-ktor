@@ -27,8 +27,6 @@ fun Application.configureDatabases() {
     
     Database.connect(dataSource)
     
-    // Desactivamos la auto-creación porque usamos las tablas de Supabase directamente
-    /*
     transaction {
         SchemaUtils.create(
             Usuarios,
@@ -43,5 +41,4 @@ fun Application.configureDatabases() {
             Feeds
         )
     }
-    */
 }
