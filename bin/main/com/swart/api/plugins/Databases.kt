@@ -28,18 +28,6 @@ fun Application.configureDatabases() {
     Database.connect(dataSource)
     
     transaction {
-        println("=== INICIO DE DEBUG DE COLUMNAS ===")
-        try {
-            val stmt = connection.prepareStatement("SELECT column_name FROM information_schema.columns WHERE table_name = 'Usuario';", false)
-            val rs = stmt.executeQuery()
-            while (rs.next()) {
-                println("COLUMNA EN Usuario: '${rs.getString(1)}'")
-            }
-        } catch (e: Exception) {
-            println("ERROR LEYENDO COLUMNAS: ${e.message}")
-        }
-        println("=== FIN DE DEBUG DE COLUMNAS ===")
-
         SchemaUtils.create(
             Usuarios,
             Artistas,
