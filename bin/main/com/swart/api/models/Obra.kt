@@ -1,18 +1,17 @@
 package com.swart.api.models
 
-import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 
-object Obras : IntIdTable("Obra", "idObra") {
-    val idExposicion = reference("idExposicion", Exposiciones, onDelete = ReferenceOption.CASCADE)
-    val titulo = varchar("titulo", 150)
-    val descrip = text("descrip")
-    val dimensiones = varchar("dimensiones", 100).nullable()
-    val tecnica = varchar("tecnica", 100).nullable()
-    val anio = integer("anio").nullable()
+object Obras : LongIdTable("obra", "idobra") {
+    val idExposicion = reference("idexposicion", Exposiciones, onDelete = ReferenceOption.CASCADE)
+    val titulo = text("titulo").nullable()
+    val descrip = text("descrip").nullable()
+    val archivo = text("archivo")
+    val oculta = bool("oculta")
+    val likes = long("likes").default(0L)
+    val dimensiones = text("dimensiones").nullable()
     val precio = double("precio").nullable()
-    val archivo = varchar("archivo", 500)
-    val oculta = bool("oculta").default(false)
-    val likes = integer("likes").default(0)
-    val score = double("score").default(0.0)
+    val anio = long("anio").nullable()
+    val score = double("score").nullable()
 }

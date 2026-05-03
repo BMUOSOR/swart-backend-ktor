@@ -1,13 +1,13 @@
 package com.swart.api.models
 
-import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 
-object Artistas : IntIdTable("Artista", "idArtista") {
-    val idUsuario = reference("idUsuario", Usuarios, onDelete = ReferenceOption.CASCADE).uniqueIndex()
-    val instagram = varchar("instagram", 100).nullable()
-    val whatsapp = varchar("whatsapp", 20).nullable()
-    val correo = varchar("correo", 100).nullable()
-    val x = varchar("x", 100).nullable()
+object Artistas : IdTable<Long>("artista") {
+    override val id = reference("idartista", Usuarios, onDelete = ReferenceOption.CASCADE)
+    val instagram = text("instagram").nullable()
+    val whatsapp = text("whatsapp").nullable()
+    val correo = text("correo").nullable()
+    val x = text("x").nullable()
     val bio = text("bio").nullable()
 }

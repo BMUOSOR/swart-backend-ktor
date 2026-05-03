@@ -1,8 +1,8 @@
 package com.swart.api.models
 
-import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.LongIdTable
 
-object Tags : IntIdTable("Tag", "idTag") {
-    val nombre = varchar("nombre", 50)
-    val descrip = text("descrip").nullable()
+object Tags : LongIdTable("tag", "idtag") {
+    val nombre = text("nombre").uniqueIndex()
+    val descrip = text("descrip")
 }

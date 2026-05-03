@@ -1,10 +1,10 @@
 package com.swart.api.models
 
-import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.dao.id.LongIdTable
 
-object Usuarios : IntIdTable("Usuario", "idUsuario") {
-    val usuario = varchar("usuario", 50).uniqueIndex()
-    val password = varchar("password", 255)
-    val nombre = varchar("nombre", 100)
-    val apellidos = varchar("apellidos", 150)
+object Usuarios : LongIdTable("usuario", "idusuario") {
+    val usuario = text("usuario").uniqueIndex()
+    val password = text("password")
+    val nombre = text("nombre")
+    val apellidos = text("apellidos").nullable()
 }
