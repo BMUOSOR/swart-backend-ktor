@@ -3,7 +3,7 @@ package com.swart.api.models
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.ReferenceOption
 
-object Likes : Table("like") {
+object Likes : Table("Like") {
     val idInteresado = reference("idInteresado", Interesados, onDelete = ReferenceOption.CASCADE)
     val idObra = reference("idObra", Obras, onDelete = ReferenceOption.CASCADE)
     

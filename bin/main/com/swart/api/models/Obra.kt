@@ -3,7 +3,7 @@ package com.swart.api.models
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 
-object Obras : IntIdTable("obra", "idObra") {
+object Obras : IntIdTable("Obra", "idObra") {
     val idExposicion = reference("idExposicion", Exposiciones, onDelete = ReferenceOption.CASCADE)
     val titulo = varchar("titulo", 150)
     val descrip = text("descrip")

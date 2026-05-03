@@ -113,9 +113,12 @@ fun Route.seedRoutes() {
                     it[idObra] = obra2Id
                 }
 
-                // 8. Insertar Interacción de prueba (Like al Guernica por el visitor)
+                // 8. Insertar Interacción de prueba (Like al Guernica)
+                val interesadoId = Interesados.insertAndGetId {
+                    // Si tuviera campos, se añaden aquí
+                }
                 Likes.insert {
-                    it[idUsuario] = visitorId
+                    it[idInteresado] = interesadoId
                     it[idObra] = obra1Id
                 }
             }
