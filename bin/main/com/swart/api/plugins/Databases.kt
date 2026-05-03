@@ -27,10 +27,8 @@ fun Application.configureDatabases() {
     
     Database.connect(dataSource)
     
-    // Desactivamos la auto-creación para usar las tablas ya existentes en Supabase (Opción B)
-    /*
     transaction {
-        SchemaUtils.createMissingTablesAndColumns(
+        SchemaUtils.create(
             Usuarios,
             Artistas,
             Exposiciones,
@@ -43,5 +41,4 @@ fun Application.configureDatabases() {
             Feeds
         )
     }
-    */
 }
