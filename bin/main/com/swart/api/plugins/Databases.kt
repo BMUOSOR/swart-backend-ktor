@@ -28,17 +28,17 @@ fun Application.configureDatabases() {
     Database.connect(dataSource)
     
     transaction {
-        println("=== INICIO DE DEBUG DE TABLAS EN SUPABASE ===")
+        println("=== INICIO DE DEBUG DE COLUMNAS ===")
         try {
-            val stmt = connection.prepareStatement("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public';", false)
+            val stmt = connection.prepareStatement("SELECT column_name FROM information_schema.columns WHERE table_name = 'Usuario';", false)
             val rs = stmt.executeQuery()
             while (rs.next()) {
-                println("TABLA ENCONTRADA EN PUBLIC: '${rs.getString(1)}'")
+                println("COLUMNA EN Usuario: '${rs.getString(1)}'")
             }
         } catch (e: Exception) {
-            println("ERROR LEYENDO TABLAS: ${e.message}")
+            println("ERROR LEYENDO COLUMNAS: ${e.message}")
         }
-        println("=== FIN DE DEBUG DE TABLAS ===")
+        println("=== FIN DE DEBUG DE COLUMNAS ===")
 
         SchemaUtils.create(
             Usuarios,
