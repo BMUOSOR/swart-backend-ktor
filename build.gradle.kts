@@ -13,6 +13,10 @@ plugins {
 group = "com.swart.api"
 version = "0.0.1"
 
+kotlin {
+    jvmToolchain(17)
+}
+
 application {
     mainClass.set("com.swart.api.ApplicationKt")
 
