@@ -12,4 +12,5 @@ object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val visitantes = long("\"visitantes\"").default(0L)
     val score = double("\"score\"").default(0.0)
     val activa = bool("\"activa\"")
+    val imgUrl = text("\"img_url\"").nullable()
 }

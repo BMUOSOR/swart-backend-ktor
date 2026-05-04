@@ -20,14 +20,14 @@ fun Route.exhibitionRoutes() {
                     
                     // Buscamos las obras de esta exposición concreta
                     val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
-                    val images = obras.map { it[Obras.archivo] }
+                    val images = obras.mapNotNull { it[Obras.imgUrl] } // Usamos imgUrl directamente
                     
                     val nombre = row[Usuarios.nombre]
                     val apellidos = row[Usuarios.apellidos] ?: ""
                     val nombreCompleto = "$nombre $apellidos".trim()
                     
-                    // Generamos un avatar por defecto basado en las iniciales del autor
-                    val avatarUrl = "https://ui-avatars.com/api/?name=${nombreCompleto.replace(" ", "+")}&background=random"
+                    // Usamos la foto del artista si existe, sino un fallback
+                    val avatarUrl = row[Usuarios.imgUrl] ?: "https://ui-avatars.com/api/?name=${nombreCompleto.replace(" ", "+")}&background=random"
 
                     ExhibitionFeedDTO(
                         idExposicion = idExpoEntity.value,
@@ -35,9 +35,10 @@ fun Route.exhibitionRoutes() {
                         descrip = row[Exposiciones.descrip],
                         artistaNombre = nombreCompleto,
                         artistaAvatar = avatarUrl,
-                        isNew = true, // Podríamos basarnos en una fecha en el futuro
+                        isNew = true, 
                         obrasCount = obras.size,
-                        obrasImages = images
+                        obrasImages = images,
+                        exposicionImgUrl = row[Exposiciones.imgUrl]
                     )
                 }
             }

@@ -7,4 +7,5 @@ object Usuarios : LongIdTable("\"Usuario\"", "\"idUsuario\"") {
     val password = text("\"password\"")
     val nombre = text("\"nombre\"")
     val apellidos = text("\"apellidos\"").nullable()
+    val imgUrl = text("\"img_url\"").nullable()
 }

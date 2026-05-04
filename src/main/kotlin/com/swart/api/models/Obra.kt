@@ -14,4 +14,5 @@ object Obras : LongIdTable("\"Obra\"", "\"idObra\"") {
     val precio = double("\"precio\"").nullable()
     val anio = long("\"anio\"").nullable()
     val score = double("\"score\"").nullable()
+    val imgUrl = text("\"img_url\"").nullable()
 }
