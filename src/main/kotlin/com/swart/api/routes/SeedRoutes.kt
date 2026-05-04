@@ -28,14 +28,23 @@ fun Route.seedRoutes() {
 
                 val baseUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/"
 
+                // Nombres y descripciones realistas
+                val userNames = listOf(
+                    "Elena" to "Valle",
+                    "Lucía" to "Mendoza",
+                    "Marina" to "Soto",
+                    "Clara" to "Ríos",
+                    "Sofía" to "Luna"
+                )
+
                 // 1. Usuarios (5 chicas)
-                val userIds = (1..5).map { i ->
+                val userIds = (0..4).map { i ->
                     Usuarios.insertAndGetId {
-                        it[usuario] = "chica_$i"
+                        it[usuario] = "chica_${i + 1}"
                         it[password] = "123456"
-                        it[nombre] = "Artista/Usuaria"
-                        it[apellidos] = "$i"
-                        it[imgUrl] = "${baseUrl}usuario_chica_$i.jpg"
+                        it[nombre] = userNames[i].first
+                        it[apellidos] = userNames[i].second
+                        it[imgUrl] = "${baseUrl}usuario_chica_${i + 1}.jpg"
                     }
                 }
 
@@ -43,11 +52,13 @@ fun Route.seedRoutes() {
                 val artist1Id = userIds[0]
                 val artist2Id = userIds[1]
                 
-                listOf(artist1Id, artist2Id).forEach { id ->
-                    Artistas.insert {
-                        it[this.id] = id
-                        it[bio] = "Artista creativa"
-                    }
+                Artistas.insert {
+                    it[this.id] = artist1Id
+                    it[bio] = "Artista multidisciplinar obsesionada con la luz y las texturas de la naturaleza clásica y moderna."
+                }
+                Artistas.insert {
+                    it[this.id] = artist2Id
+                    it[bio] = "Exploradora de volúmenes y sombras. Sus obras desafían la gravedad física y la narrativa visual contemporánea."
                 }
 
                 // 3. Interesados (las 3 restantes)
@@ -59,12 +70,12 @@ fun Route.seedRoutes() {
 
                 // 4. Tags
                 val tagsData = listOf(
-                    "Pintura Clásica" to "Pintura tradicional",
-                    "Pintura Moderna" to "Pintura contemporánea",
-                    "Escultura Clásica" to "Escultura en mármol y bronce",
-                    "Escultura Moderna" to "Escultura abstracta",
-                    "Fotografía Clásica" to "Fotografía analógica",
-                    "Fotografía Moderna" to "Fotografía digital"
+                    "Pintura Clásica" to "Pintura tradicional y técnica maestra.",
+                    "Pintura Moderna" to "Exploración vibrante y abstracta.",
+                    "Escultura Clásica" to "Perfección de la forma en mármol y bronce.",
+                    "Escultura Moderna" to "Experimentación geométrica y espacial.",
+                    "Fotografía Clásica" to "Instantes eternos capturados en plata y monocromo.",
+                    "Fotografía Moderna" to "Visiones digitales y perspectivas inusuales."
                 )
                 val tagIds = tagsData.map { (nombreTag, desc) ->
                     Tags.insertAndGetId {
@@ -73,28 +84,52 @@ fun Route.seedRoutes() {
                     }
                 }
 
+                // Datos enriquecidos para Exposiciones
+                val expoData = listOf(
+                    Triple("Ecos del Renacimiento", "Una inmersión profunda en las técnicas maestras y los colores que definieron una era de iluminación artística. Obras que respiran historia.", artist1Id),
+                    Triple("Trazos de lo Abstracto", "Exploración caótica y vibrante de la emoción humana. Un viaje a través de la pintura contemporánea donde el color es el verdadero protagonista.", artist1Id),
+                    Triple("Piedra y Alma", "Figuras esculpidas con precisión milimétrica que capturan la perfección de la forma humana, haciendo eco de la mitología antigua.", artist1Id),
+                    Triple("Volúmenes Rotos", "Muestra escultórica que desafía la gravedad y la percepción espacial. Estructuras de tensión que rompen los moldes tradicionales.", artist2Id),
+                    Triple("Luz en Plata", "Retrospectiva fotográfica documentando la esencia pura de la realidad. Instantes irrepetibles bañados en el romanticismo del blanco y negro.", artist2Id),
+                    Triple("Lentes del Mañana", "Composiciones vanguardistas y visiones digitales que reescriben las reglas de la narrativa visual contemporánea urbana.", artist2Id)
+                )
+
                 // 5. Exposiciones (6 exposiciones, 3 para cada artista)
-                val expoIds = (1..6).map { i ->
+                val expoIds = expoData.mapIndexed { i, data ->
                     Exposiciones.insertAndGetId {
-                        it[idArtista] = if (i <= 3) artist1Id else artist2Id
-                        it[titulo] = "Exposición $i"
-                        it[descrip] = "Muestra de arte de la exposición $i"
-                        it[imgUrl] = "${baseUrl}exhibition_$i.jpg"
+                        it[idArtista] = data.third
+                        it[titulo] = data.first
+                        it[descrip] = data.second
+                        it[imgUrl] = "${baseUrl}exhibition_${i + 1}.jpg"
                         it[activa] = true
-                        it[score] = 4.5
+                        it[score] = 4.8
                     }
                 }
 
-                // 6. Obras (18 en total, 3 por exposición)
-                val obrasPrefixes = listOf(
-                    "obra_pintura1",     // Para Expo 1 (Tag: Pintura Clásica)
-                    "obra_pintura2",     // Para Expo 2 (Tag: Pintura Moderna)
-                    "obra_escultura1",   // Para Expo 3 (Tag: Escultura Clásica)
-                    "obra_escultura2",   // Para Expo 4 (Tag: Escultura Moderna)
-                    "obra_fotografia1",  // Para Expo 5 (Tag: Fotografía Clásica)
-                    "obra_fotografia2"   // Para Expo 6 (Tag: Fotografía Moderna)
+                // Nombres enriquecidos para las obras
+                val obrasNombres = listOf(
+                    listOf("El Retrato del Alma", "Bodegón al Atardecer", "Luz de Otoño"),
+                    listOf("Caos Primordial", "Sueño Neón", "Fragmentación de la Realidad"),
+                    listOf("El Pensador Silencioso", "Venus Eterna", "Guerrero Caído"),
+                    listOf("Esfera de Vacío", "Tensión Metálica", "Estructura Espacial #4"),
+                    listOf("Mirada de 1920", "Sombras en la Calle", "Reflejos de París"),
+                    listOf("Ciudad Ciberpunk", "Perspectiva Invertida", "Contraste Urbano")
+                )
+                
+                val obrasDescripciones = listOf(
+                    "Obra magistral que captura la esencia de una época pasada con pinceladas finas.",
+                    "Una explosión de creatividad que rompe las barreras de la interpretación.",
+                    "Pieza imponente donde el material cobra vida propia y cuenta su historia.",
+                    "Desafío absoluto a los materiales modernos y al concepto de estabilidad.",
+                    "Captura única de un instante efímero, congelado para siempre en el tiempo.",
+                    "Visión futurista y cruda de la sociedad moderna a través de la lente."
                 )
 
+                val obrasPrefixes = listOf(
+                    "obra_pintura1", "obra_pintura2", "obra_escultura1", "obra_escultura2", "obra_fotografia1", "obra_fotografia2"
+                )
+
+                // 6. Obras (18 en total, 3 por exposición)
                 for (i in 0 until 6) {
                     val expoId = expoIds[i]
                     val tagId = tagIds[i]
@@ -103,8 +138,9 @@ fun Route.seedRoutes() {
                     for (j in 1..3) {
                         val obraId = Obras.insertAndGetId {
                             it[idExposicion] = expoId
-                            it[titulo] = "Obra $prefix $j"
-                            it[archivo] = "" // Dejamos archivo vacío o ponemos lo mismo, ya que usamos imgUrl
+                            it[titulo] = obrasNombres[i][j - 1]
+                            it[descrip] = obrasDescripciones[i] // Misma descripción base por estilo
+                            it[archivo] = ""
                             it[imgUrl] = "${baseUrl}${prefix}_${j}.jpg"
                             it[oculta] = false
                         }
@@ -118,7 +154,7 @@ fun Route.seedRoutes() {
                 }
 
             }
-            call.respondText("Seed completado: 5 usuarias, 6 tags, 6 exposiciones, 18 obras.", status = HttpStatusCode.OK)
+            call.respondText("Seed completado: Textos y descripciones artísticas generadas con éxito.", status = HttpStatusCode.OK)
         } catch (e: Exception) {
             e.printStackTrace()
             call.respondText("Error poblando DB: ${e.localizedMessage}", status = HttpStatusCode.InternalServerError)
