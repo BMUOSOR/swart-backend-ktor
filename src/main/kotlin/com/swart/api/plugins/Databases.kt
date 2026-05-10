@@ -9,9 +9,9 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Application.configureDatabases() {
-    val dbUrl = System.getenv("DB_JDBC_URL") ?: "jdbc:postgresql://localhost:5432/swart"
-    val dbUser = System.getenv("DB_USER") ?: "postgres"
-    val dbPassword = System.getenv("DB_PASSWORD") ?: "postgres"
+    val dbUrl = environment.config.propertyOrNull("storage.jdbcUrl")?.getString() ?: "jdbc:postgresql://aws-1-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    val dbUser = environment.config.propertyOrNull("storage.dbUser")?.getString() ?: "postgres.bkrmqkpxidmemzxhefoc"
+    val dbPassword = environment.config.propertyOrNull("storage.dbPassword")?.getString() ?: "bollopower.2424"
     
     val config = HikariConfig().apply {
         jdbcUrl = dbUrl
