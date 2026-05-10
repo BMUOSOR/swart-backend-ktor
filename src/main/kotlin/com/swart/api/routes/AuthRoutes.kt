@@ -17,41 +17,79 @@ fun Route.authRoutes() {
             val req = call.receive<RegisterRequest>()
             
             try {
+                var missingInfo: ErrorResponse? = null
                 val response = transaction {
                     // Check if user exists
                     val existing = Usuarios.select { Usuarios.usuario eq req.usuario }.singleOrNull()
+                    
+                    var userId = existing?.get(Usuarios.id)
                     if (existing != null) {
-                        throw IllegalArgumentException("User already exists")
+                        // User exists, verify password
+                        if (existing[Usuarios.password] != req.password) {
+                            throw IllegalArgumentException("Usuario ya en uso")
+                        }
+                        // Password matches, check if they already have the role
+                        val isArtista = Artistas.select { Artistas.id eq userId!! }.empty().not()
+                        val isInteresado = Interesados.select { Interesados.id eq userId!! }.empty().not()
+                        
+                        if ((req.role.lowercase() == "artista" && isArtista) || (req.role.lowercase() == "interesado" && isInteresado)) {
+                            missingInfo = ErrorResponse(
+                                error = "USER_EXISTS_SAME_ROLE",
+                                nombre = existing[Usuarios.nombre],
+                                apellidos = existing[Usuarios.apellidos]
+                            )
+                            return@transaction null
+                        }
+                        
+                        // User exists but doesn't have the requested role
+                        // If they haven't confirmed yet, we ask
+                        if (!req.confirmAddRole) {
+                            missingInfo = ErrorResponse(
+                                error = "USER_EXISTS_DIFFERENT_ROLE",
+                                nombre = existing[Usuarios.nombre],
+                                apellidos = existing[Usuarios.apellidos]
+                            )
+                            return@transaction null
+                        }
+                        // If they confirmed, we proceed to insert into role table below
+                    } else {
+                        // Insert into Usuarios
+                        userId = Usuarios.insertAndGetId {
+                            it[usuario] = req.usuario
+                            it[password] = req.password // Storing in plain text as requested for MVP
+                            it[nombre] = req.nombre
+                            it[apellidos] = req.apellidos
+                        }
                     }
 
-                    // Insert into Usuarios
-                    val newUserId = Usuarios.insertAndGetId {
-                        it[usuario] = req.usuario
-                        it[password] = req.password // Storing in plain text as requested for MVP
-                        it[nombre] = req.nombre
-                        it[apellidos] = req.apellidos
-                    }
-
-                    // Insert into role specific table
+                    // Insert into role specific table if not already there
+                    // This will only be reached if user is NEW
                     if (req.role.lowercase() == "artista") {
                         Artistas.insertAndGetId {
-                            it[id] = newUserId
+                            it[id] = userId!!
                         }
                     } else {
                         Interesados.insertAndGetId {
-                            it[id] = newUserId
+                            it[id] = userId!!
                         }
                     }
 
                     AuthResponse(
-                        id = newUserId.value,
+                        id = userId!!.value,
                         nombre = req.nombre,
                         apellidos = req.apellidos,
                         usuario = req.usuario,
                         role = req.role.lowercase()
                     )
                 }
-                call.respond(HttpStatusCode.Created, response)
+                
+                if (missingInfo != null) {
+                    call.respond(HttpStatusCode.Forbidden, missingInfo!!)
+                } else if (response != null) {
+                    call.respond(HttpStatusCode.Created, response)
+                } else {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("Registration failed"))
+                }
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "Registration failed"))
             }
@@ -61,28 +99,45 @@ fun Route.authRoutes() {
             val req = call.receive<LoginRequest>()
             
             try {
+                var missingInfo: ErrorResponse? = null
                 val response = transaction {
                     val userRow = Usuarios.select { Usuarios.usuario eq req.usuario }.singleOrNull()
-                        ?: throw IllegalArgumentException("Invalid credentials")
+                        ?: throw IllegalArgumentException("INVALID_CREDENTIALS")
 
                     if (userRow[Usuarios.password] != req.password) {
-                        throw IllegalArgumentException("Invalid credentials")
+                        throw IllegalArgumentException("INVALID_CREDENTIALS")
                     }
                     
                     val userId = userRow[Usuarios.id]
-                    
                     val isArtista = Artistas.select { Artistas.id eq userId }.empty().not()
-                    val role = if (isArtista) "artista" else "interesado"
+                    val isInteresado = Interesados.select { Interesados.id eq userId }.empty().not()
+                    
+                    val requestedRole = req.role.lowercase()
+                    if ((requestedRole == "artista" && !isArtista) || (requestedRole == "interesado" && !isInteresado)) {
+                        missingInfo = ErrorResponse(
+                            error = "ROLE_MISSING",
+                            nombre = userRow[Usuarios.nombre],
+                            apellidos = userRow[Usuarios.apellidos]
+                        )
+                        return@transaction null
+                    }
 
                     AuthResponse(
                         id = userId.value,
                         nombre = userRow[Usuarios.nombre],
                         apellidos = userRow[Usuarios.apellidos],
                         usuario = userRow[Usuarios.usuario],
-                        role = role
+                        role = requestedRole
                     )
                 }
-                call.respond(HttpStatusCode.OK, response)
+
+                if (missingInfo != null) {
+                    call.respond(HttpStatusCode.Forbidden, missingInfo!!)
+                } else if (response != null) {
+                    call.respond(HttpStatusCode.OK, response)
+                } else {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("INVALID_CREDENTIALS"))
+                }
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.Unauthorized, ErrorResponse(e.message ?: "Login failed"))
             }

@@ -158,6 +158,25 @@ fun Route.seedRoutes() {
                     }
                 }
 
+                // 7. Balizas (demo en Madrid)
+                val madridCoords = listOf(
+                    40.4168 to -3.7038, // Puerta del Sol
+                    40.4137 to -3.6921, // Museo del Prado
+                    40.4087 to -3.6945, // Reina Sofia
+                    40.4160 to -3.6949, // Thyssen
+                    40.4241 to -3.7118, // Plaza de España
+                    40.4221 to -3.6924  // Biblioteca Nacional
+                )
+
+                expoIds.forEachIndexed { i, expoId ->
+                    if (i < madridCoords.size) {
+                        Balizas.insert {
+                            it[id] = expoId
+                            it[lat] = madridCoords[i].first
+                            it[lon] = madridCoords[i].second
+                        }
+                    }
+                }
             }
             call.respondText("Seed completado: Textos y descripciones artísticas generadas con éxito.", status = HttpStatusCode.OK)
         } catch (e: Exception) {

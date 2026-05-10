@@ -15,5 +15,6 @@ fun Application.configureRouting() {
         swipeRoutes()
         seedRoutes()
         curationRoutes()
+        mapRoutes()
     }
 }
