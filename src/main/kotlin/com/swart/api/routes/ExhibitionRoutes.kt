@@ -1,6 +1,7 @@
 package com.swart.api.routes
 
 import com.swart.api.models.*
+import com.swart.api.models.dto.ArtworkDTO
 import com.swart.api.models.dto.ExhibitionFeedDTO
 import io.ktor.server.application.*
 import io.ktor.server.response.*
@@ -21,7 +22,16 @@ fun Route.exhibitionRoutes() {
                     // Buscamos las obras de esta exposición concreta
                     val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
                     val obrasIds = obras.map { it[Obras.id] }
-                    val images = obras.mapNotNull { it[Obras.imgUrl] } 
+                    val artworks = obras.mapNotNull { 
+                        val imgUrl = it[Obras.imgUrl]
+                        if (imgUrl != null) {
+                            ArtworkDTO(
+                                idObra = it[Obras.id].value,
+                                titulo = it[Obras.titulo] ?: "Sin Título",
+                                imgUrl = imgUrl
+                            )
+                        } else null
+                    }
                     
                     // Extraer los tags únicos de las obras de esta exposición
                     val tags = if (obrasIds.isNotEmpty()) {
@@ -48,7 +58,7 @@ fun Route.exhibitionRoutes() {
                         artistaAvatar = avatarUrl,
                         isNew = true, 
                         obrasCount = obras.size,
-                        obrasImages = images,
+                        obras = artworks,
                         exposicionImgUrl = row[Exposiciones.imgUrl],
                         tags = tags,
                         fechaInicio = row[Exposiciones.fechaInicio],
