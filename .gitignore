@@ -1,20 +1,16 @@
-*.class
-*.log
-
-# Gradle
-.gradle/
+.gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# IntelliJ IDEA
-.idea/
+/out/
+/.idea/
+/.idea_modules/
 *.iml
+*.ipr
 *.iws
-
-# Mac
 .DS_Store
-
-# Windows
-Thumbs.db
+/bin/
+/target/
+.venv/
+env/
+venv/
+ENV/
