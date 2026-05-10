@@ -103,6 +103,11 @@ fun Route.seedRoutes() {
                         it[imgUrl] = "${baseUrl}exhibition_${i + 1}.jpg"
                         it[activa] = true
                         it[score] = 4.8
+                        it[fechaInicio] = "02/09/2026"
+                        it[fechaFin] = "02/10/2026"
+                        it[nombreLugar] = "Museo Nacional de Arte Contemporáneo"
+                        it[ubicacion] = "Calle de las Artes, 45, 28014 Madrid, España"
+                        it[precio] = 12.0
                     }
                 }
 

@@ -13,4 +13,7 @@ object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val score = double("\"score\"").default(0.0)
     val activa = bool("\"activa\"")
     val imgUrl = text("\"img_url\"").nullable()
+    val fechaInicio = text("\"fecha_inicio\"").nullable()
+    val fechaFin = text("\"fecha_fin\"").nullable()
+    val nombreLugar = text("\"nombre_lugar\"").nullable()
 }

@@ -20,7 +20,18 @@ fun Route.exhibitionRoutes() {
                     
                     // Buscamos las obras de esta exposición concreta
                     val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
-                    val images = obras.mapNotNull { it[Obras.imgUrl] } // Usamos imgUrl directamente
+                    val obrasIds = obras.map { it[Obras.id] }
+                    val images = obras.mapNotNull { it[Obras.imgUrl] } 
+                    
+                    // Extraer los tags únicos de las obras de esta exposición
+                    val tags = if (obrasIds.isNotEmpty()) {
+                        (Tags innerJoin TagObras)
+                            .select { TagObras.idObra inList obrasIds }
+                            .withDistinct()
+                            .map { it[Tags.nombre] }
+                    } else {
+                        emptyList()
+                    }
                     
                     val nombre = row[Usuarios.nombre]
                     val apellidos = row[Usuarios.apellidos] ?: ""
@@ -38,7 +49,14 @@ fun Route.exhibitionRoutes() {
                         isNew = true, 
                         obrasCount = obras.size,
                         obrasImages = images,
-                        exposicionImgUrl = row[Exposiciones.imgUrl]
+                        exposicionImgUrl = row[Exposiciones.imgUrl],
+                        tags = tags,
+                        fechaInicio = row[Exposiciones.fechaInicio],
+                        fechaFin = row[Exposiciones.fechaFin],
+                        nombreLugar = row[Exposiciones.nombreLugar],
+                        ubicacion = row[Exposiciones.ubicacion],
+                        precio = row[Exposiciones.precio],
+                        score = row[Exposiciones.score]
                     )
                 }
             }
