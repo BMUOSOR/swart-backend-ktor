@@ -29,19 +29,22 @@ fun Route.mapRoutes() {
                             .map { it[Tags.nombre].lowercase() }
                         
                         // Filter for only the allowed tags and count frequencies
-                        val validTags = setOf("pintura", "escultura", "fotografía")
-                        val frequencies = tagsQuery
-                            .filter { it in validTags }
-                            .groupingBy { it }
-                            .eachCount()
-                        
-                        // Get the most frequent tag, default to "pintura"
-                        val mainTag = frequencies.maxByOrNull { it.value }?.key ?: "pintura"
+                        // Determine the main tag based on keywords
+                        val mainTag = when {
+                            tagsQuery.any { it.contains("escultura") } -> "escultura"
+                            tagsQuery.any { it.contains("fotografía") } -> "fotografía"
+                            else -> "pintura"
+                        }
                         
                         // Mock distance and match for MVP
                         val distanceStr = "${Random.nextInt(1, 15)} km"
                         val matchPct = Random.nextInt(70, 100)
                         
+                        val now = System.currentTimeMillis()
+                        val dayMillis = 24 * 60 * 60 * 1000L
+                        val sDate = now + Random.nextLong(-5, 5) * dayMillis
+                        val eDate = sDate + Random.nextLong(2, 10) * dayMillis
+
                         MapPinDto(
                             idExposicion = idExp,
                             lat = row[Balizas.lat],
@@ -51,7 +54,9 @@ fun Route.mapRoutes() {
                             imagen = row[Exposiciones.imgUrl],
                             distancia = distanceStr,
                             match = matchPct,
-                            mainTag = mainTag
+                            mainTag = mainTag,
+                            startDate = sDate,
+                            endDate = eDate
                         )
                     }
                 }

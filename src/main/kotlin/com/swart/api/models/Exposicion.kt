@@ -2,6 +2,7 @@ package com.swart.api.models
 
 import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
+import org.jetbrains.exposed.sql.kotlin.datetime.date
 
 object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE)
@@ -13,7 +14,7 @@ object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val score = double("\"score\"").default(0.0)
     val activa = bool("\"activa\"")
     val imgUrl = text("\"img_url\"").nullable()
-    val fechaInicio = text("\"fecha_inicio\"").nullable()
-    val fechaFin = text("\"fecha_fin\"").nullable()
+    val fechaInicio = date("\"fecha_inicio\"").nullable()
+    val fechaFin = date("\"fecha_fin\"").nullable()
     val nombreLugar = text("\"nombre_lugar\"").nullable()
 }

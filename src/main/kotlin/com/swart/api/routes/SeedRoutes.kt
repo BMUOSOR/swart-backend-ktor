@@ -2,6 +2,7 @@ package com.swart.api.routes
 
 import com.swart.api.models.*
 import io.ktor.http.*
+import kotlinx.datetime.LocalDate
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -91,7 +92,9 @@ fun Route.seedRoutes() {
                     Triple("Piedra y Alma", "Figuras esculpidas con precisión milimétrica que capturan la perfección de la forma humana, haciendo eco de la mitología antigua.", artist1Id),
                     Triple("Volúmenes Rotos", "Muestra escultórica que desafía la gravedad y la percepción espacial. Estructuras de tensión que rompen los moldes tradicionales.", artist2Id),
                     Triple("Luz en Plata", "Retrospectiva fotográfica documentando la esencia pura de la realidad. Instantes irrepetibles bañados en el romanticismo del blanco y negro.", artist2Id),
-                    Triple("Lentes del Mañana", "Composiciones vanguardistas y visiones digitales que reescriben las reglas de la narrativa visual contemporánea urbana.", artist2Id)
+                    Triple("Lentes del Mañana", "Composiciones vanguardistas y visiones digitales que reescriben las reglas de la narrativa visual contemporánea urbana.", artist2Id),
+                    Triple("Bronce Inmortal", "Colección de esculturas en bronce que exploran la resistencia y la forma en el espacio público.", artist2Id),
+                    Triple("Madrid Nocturno", "Capturas atmosféricas de la capital bajo las luces de neón y las sombras de la noche.", artist1Id)
                 )
 
                 // 5. Exposiciones (6 exposiciones, 3 para cada artista)
@@ -103,8 +106,8 @@ fun Route.seedRoutes() {
                         it[imgUrl] = "${baseUrl}exhibition_${i + 1}.jpg"
                         it[activa] = true
                         it[score] = 4.8
-                        it[fechaInicio] = "02/09/2026"
-                        it[fechaFin] = "02/10/2026"
+                        it[fechaInicio] = LocalDate.parse("2026-09-02")
+                        it[fechaFin] = LocalDate.parse("2026-10-02")
                         it[nombreLugar] = "Museo Nacional de Arte Contemporáneo"
                         it[ubicacion] = "Calle de las Artes, 45, 28014 Madrid, España"
                         it[precio] = 12.0
@@ -118,7 +121,9 @@ fun Route.seedRoutes() {
                     listOf("El Pensador Silencioso", "Venus Eterna", "Guerrero Caído"),
                     listOf("Esfera de Vacío", "Tensión Metálica", "Estructura Espacial #4"),
                     listOf("Mirada de 1920", "Sombras en la Calle", "Reflejos de París"),
-                    listOf("Ciudad Ciberpunk", "Perspectiva Invertida", "Contraste Urbano")
+                    listOf("Ciudad Ciberpunk", "Perspectiva Invertida", "Contraste Urbano"),
+                    listOf("Gigante Dormido", "El Abrazo del Metal", "Formas en el Aire"),
+                    listOf("Cielo de Madrid", "Luces de Gran Vía", "Silencio Urbano")
                 )
                 
                 val obrasDescripciones = listOf(
@@ -127,17 +132,19 @@ fun Route.seedRoutes() {
                     "Pieza imponente donde el material cobra vida propia y cuenta su historia.",
                     "Desafío absoluto a los materiales modernos y al concepto de estabilidad.",
                     "Captura única de un instante efímero, congelado para siempre en el tiempo.",
-                    "Visión futurista y cruda de la sociedad moderna a través de la lente."
+                    "Visión futurista y cruda de la sociedad moderna a través de la lente.",
+                    "Escultura de gran formato que domina el espacio con su presencia.",
+                    "Fotografía de alta exposición que revela detalles invisibles al ojo humano."
                 )
 
                 val obrasPrefixes = listOf(
-                    "obra_pintura1", "obra_pintura2", "obra_escultura1", "obra_escultura2", "obra_fotografia1", "obra_fotografia2"
+                    "obra_pintura1", "obra_pintura2", "obra_escultura1", "obra_escultura2", "obra_fotografia1", "obra_fotografia2", "obra_escultura2", "obra_fotografia1"
                 )
 
-                // 6. Obras (18 en total, 3 por exposición)
-                for (i in 0 until 6) {
+                // 6. Obras (24 en total, 3 por exposición)
+                for (i in 0 until 8) {
                     val expoId = expoIds[i]
-                    val tagId = tagIds[i]
+                    val tagId = tagIds[i % 6] // Reutilizamos los tags de forma circular
                     val prefix = obrasPrefixes[i]
 
                     for (j in 1..3) {
@@ -160,12 +167,14 @@ fun Route.seedRoutes() {
 
                 // 7. Balizas (demo en Madrid)
                 val madridCoords = listOf(
-                    40.4168 to -3.7038, // Puerta del Sol
-                    40.4137 to -3.6921, // Museo del Prado
-                    40.4087 to -3.6945, // Reina Sofia
-                    40.4160 to -3.6949, // Thyssen
-                    40.4241 to -3.7118, // Plaza de España
-                    40.4221 to -3.6924  // Biblioteca Nacional
+                    40.4168 to -3.7038, // Puerta del Sol (Pintura)
+                    40.4137 to -3.6921, // Museo del Prado (Pintura)
+                    40.4087 to -3.6945, // Reina Sofia (Escultura)
+                    40.4160 to -3.6949, // Thyssen (Escultura)
+                    40.4241 to -3.7118, // Plaza de España (Fotografía)
+                    40.4221 to -3.6924, // Biblioteca Nacional (Fotografía)
+                    40.4150 to -3.6840, // Parque del Retiro (NUEVA Escultura)
+                    40.4200 to -3.7030  // Gran Vía (NUEVA Fotografía)
                 )
 
                 expoIds.forEachIndexed { i, expoId ->

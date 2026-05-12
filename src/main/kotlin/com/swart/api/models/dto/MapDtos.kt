@@ -12,5 +12,7 @@ data class MapPinDto(
     val imagen: String?,
     val distancia: String, // Mocked for MVP
     val match: Int, // Mocked for MVP
-    val mainTag: String // "pintura", "escultura", "fotografía"
+    val mainTag: String, // "pintura", "escultura", "fotografía"
+    val startDate: Long? = null,
+    val endDate: Long? = null
 )
