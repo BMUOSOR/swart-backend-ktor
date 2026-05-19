@@ -11,3 +11,10 @@ object Artistas : IdTable<Long>("\"Artista\"") {
     val x = text("\"x\"").nullable()
     val bio = text("\"bio\"").nullable()
 }
+
+object Seguidores : org.jetbrains.exposed.sql.Table("\"Seguidores\"") {
+    val idUsuario = reference("\"idUsuario\"", Usuarios, onDelete = ReferenceOption.CASCADE, fkName = "fk_seguidores_usuario")
+    val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE, fkName = "fk_seguidores_artista")
+    override val primaryKey = PrimaryKey(idUsuario, idArtista)
+}
+

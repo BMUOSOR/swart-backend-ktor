@@ -56,10 +56,16 @@ fun Route.seedRoutes() {
                 Artistas.insert {
                     it[this.id] = artist1Id
                     it[bio] = "Artista multidisciplinar obsesionada con la luz y las texturas de la naturaleza clásica y moderna."
+                    it[instagram] = "@elena_valle"
+                    it[x] = "@elena_valle_art"
+                    it[correo] = "elena.valle@swart.com"
                 }
                 Artistas.insert {
                     it[this.id] = artist2Id
                     it[bio] = "Exploradora de volúmenes y sombras. Sus obras desafían la gravedad física y la narrativa visual contemporánea."
+                    it[instagram] = "@lucia_mendoza"
+                    it[x] = "@lucia_m_art"
+                    it[correo] = "lucia.mendoza@swart.com"
                 }
 
                 // 3. Interesados (las 3 restantes)
@@ -67,6 +73,20 @@ fun Route.seedRoutes() {
                     Interesados.insert {
                         it[id] = userIds[index]
                     }
+                }
+
+                // 3.1 Seguidores de prueba
+                Seguidores.insert {
+                    it[idUsuario] = userIds[2]
+                    it[idArtista] = artist1Id
+                }
+                Seguidores.insert {
+                    it[idUsuario] = userIds[3]
+                    it[idArtista] = artist1Id
+                }
+                Seguidores.insert {
+                    it[idUsuario] = userIds[4]
+                    it[idArtista] = artist2Id
                 }
 
                 // 4. Tags
@@ -106,8 +126,8 @@ fun Route.seedRoutes() {
                         it[imgUrl] = "${baseUrl}exhibition_${i + 1}.jpg"
                         it[activa] = true
                         it[score] = 4.8
-                        it[fechaInicio] = LocalDate.parse("2026-09-02")
-                        it[fechaFin] = LocalDate.parse("2026-10-02")
+                        it[fechaInicio] = "2026-09-02"
+                        it[fechaFin] = "2026-10-02"
                         it[nombreLugar] = "Museo Nacional de Arte Contemporáneo"
                         it[ubicacion] = "Calle de las Artes, 45, 28014 Madrid, España"
                         it[precio] = 12.0
@@ -155,6 +175,8 @@ fun Route.seedRoutes() {
                             it[archivo] = ""
                             it[imgUrl] = "${baseUrl}${prefix}_${j}.jpg"
                             it[oculta] = false
+                            // j % 2 == 0 significa que la segunda obra tiene precio (2800.0) para estar en venta
+                            it[precio] = if (j % 2 == 0) (j * 1400.0) else 0.0
                         }
 
                         // Asignamos el tag a la obra

@@ -16,5 +16,6 @@ fun Application.configureRouting() {
         seedRoutes()
         curationRoutes()
         mapRoutes()
+        artistRoutes()
     }
 }

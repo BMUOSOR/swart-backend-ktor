@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ExhibitionFeedDTO(
     val idExposicion: Long,
+    val idArtista: Long,
     val titulo: String,
     val descrip: String?,
     val artistaNombre: String,

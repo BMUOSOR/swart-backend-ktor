@@ -38,7 +38,8 @@ fun Application.configureDatabases() {
             TagObras,
             Interesados,
             Likes,
-            Feeds
+            Feeds,
+            Seguidores
         )
     }
 }

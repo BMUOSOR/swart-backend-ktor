@@ -52,6 +52,7 @@ fun Route.exhibitionRoutes() {
 
                     ExhibitionFeedDTO(
                         idExposicion = idExpoEntity.value,
+                        idArtista = row[Exposiciones.idArtista].value,
                         titulo = row[Exposiciones.titulo],
                         descrip = row[Exposiciones.descrip],
                         artistaNombre = nombreCompleto,
