@@ -35,11 +35,11 @@ fun Route.artistRoutes() {
 
                     // 2. Conteo de seguidores y exposiciones
                     val seguidoresCount = Seguidores.select { Seguidores.idArtista eq artistId }.count().toInt()
-                    val exposicionesCount = Exposiciones.select { Exposiciones.idArtista eq artistId }.count().toInt()
+                    val exposicionesCount = ArtistaExposiciones.select { ArtistaExposiciones.idArtista eq artistId }.count().toInt()
 
                     // 3. Obtener exposiciones activas
-                    val activeExpositionsQuery = Exposiciones
-                        .select { (Exposiciones.idArtista eq artistId) and (Exposiciones.activa eq true) }
+                    val activeExpositionsQuery = (Exposiciones innerJoin ArtistaExposiciones)
+                        .select { (ArtistaExposiciones.idArtista eq artistId) and (Exposiciones.activa eq true) }
 
                     val activeExhibitions = activeExpositionsQuery.map { row ->
                         val idExpoEntity = row[Exposiciones.id]
@@ -73,6 +73,7 @@ fun Route.artistRoutes() {
                             descrip = row[Exposiciones.descrip],
                             artistaNombre = nombreCompleto,
                             artistaAvatar = avatarUrl,
+                            artistas = listOf(ArtistFeedDTO(artistId, nombreCompleto, avatarUrl)),
                             isNew = true,
                             obrasCount = obras.size,
                             obras = artworks,
@@ -88,8 +89,8 @@ fun Route.artistRoutes() {
                     }
 
                     // 4. Obtener obras en venta (precio > 0)
-                    val worksForSaleQuery = (Obras innerJoin Exposiciones)
-                        .select { (Exposiciones.idArtista eq artistId) and (Obras.precio greater 0.0) }
+                    val worksForSaleQuery = (Obras innerJoin Exposiciones innerJoin ArtistaExposiciones)
+                        .select { (ArtistaExposiciones.idArtista eq artistId) and (Obras.precio greater 0.0) }
 
                     val worksForSale = worksForSaleQuery.mapNotNull { row ->
                         val imgUrl = row[Obras.imgUrl]

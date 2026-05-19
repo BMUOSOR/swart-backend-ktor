@@ -5,7 +5,6 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.kotlin.datetime.date
 
 object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
-    val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE)
     val titulo = text("\"titulo\"")
     val descrip = text("\"descrip\"").nullable()
     val ubicacion = text("\"ubicacion\"").nullable()
@@ -17,6 +16,12 @@ object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val fechaInicio = pgDate("\"fecha_inicio\"").nullable()
     val fechaFin = pgDate("\"fecha_fin\"").nullable()
     val nombreLugar = text("\"nombre_lugar\"").nullable()
+}
+
+object ArtistaExposiciones : org.jetbrains.exposed.sql.Table("\"ArtistaExposicion\"") {
+    val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE, fkName = "fk_artistaexposiciones_artista")
+    val idExposicion = reference("\"idExposicion\"", Exposiciones, onDelete = ReferenceOption.CASCADE, fkName = "fk_artistaexposiciones_exposicion")
+    override val primaryKey = PrimaryKey(idArtista, idExposicion, name = "ArtistaExposicion_pkey")
 }
 
 class PGDateColumnType : org.jetbrains.exposed.sql.ColumnType() {

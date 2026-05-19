@@ -28,6 +28,7 @@ fun Application.configureDatabases() {
     Database.connect(dataSource)
     
     transaction {
+        exec("ALTER TABLE \"Exposicion\" DROP COLUMN IF EXISTS \"idArtista\" CASCADE;")
         SchemaUtils.create(
             Usuarios,
             Artistas,
@@ -39,7 +40,8 @@ fun Application.configureDatabases() {
             Interesados,
             Likes,
             Feeds,
-            Seguidores
+            Seguidores,
+            ArtistaExposiciones
         )
     }
 }

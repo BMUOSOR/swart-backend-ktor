@@ -21,6 +21,7 @@ fun Route.seedRoutes() {
                 Feeds.deleteAll()
                 Obras.deleteAll()
                 Balizas.deleteAll()
+                ArtistaExposiciones.deleteAll()
                 Exposiciones.deleteAll()
                 Tags.deleteAll()
                 Artistas.deleteAll()
@@ -117,10 +118,9 @@ fun Route.seedRoutes() {
                     Triple("Madrid Nocturno", "Capturas atmosféricas de la capital bajo las luces de neón y las sombras de la noche.", artist1Id)
                 )
 
-                // 5. Exposiciones (6 exposiciones, 3 para cada artista)
+                // 5. Exposiciones (8 exposiciones, pobladas a través de la tabla intermedia ArtistaExposiciones)
                 val expoIds = expoData.mapIndexed { i, data ->
-                    Exposiciones.insertAndGetId {
-                        it[idArtista] = data.third
+                    val expoId = Exposiciones.insertAndGetId {
                         it[titulo] = data.first
                         it[descrip] = data.second
                         it[imgUrl] = "${baseUrl}exhibition_${i + 1}.jpg"
@@ -132,6 +132,21 @@ fun Route.seedRoutes() {
                         it[ubicacion] = "Calle de las Artes, 45, 28014 Madrid, España"
                         it[precio] = 12.0
                     }
+                    
+                    ArtistaExposiciones.insert {
+                        it[idArtista] = data.third
+                        it[idExposicion] = expoId
+                    }
+                    
+                    // Demo de Multi-Artista: Asociamos el segundo artista también a la primera exposición (i == 0)
+                    if (i == 0) {
+                        ArtistaExposiciones.insert {
+                            it[idArtista] = artist2Id
+                            it[idExposicion] = expoId
+                        }
+                    }
+                    
+                    expoId
                 }
 
                 // Nombres enriquecidos para las obras

@@ -3,6 +3,13 @@ package com.swart.api.models.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class ArtistFeedDTO(
+    val id: Long,
+    val nombre: String,
+    val avatarUrl: String
+)
+
+@Serializable
 data class ExhibitionFeedDTO(
     val idExposicion: Long,
     val idArtista: Long,
@@ -10,6 +17,7 @@ data class ExhibitionFeedDTO(
     val descrip: String?,
     val artistaNombre: String,
     val artistaAvatar: String,
+    val artistas: List<ArtistFeedDTO>,
     val isNew: Boolean,
     val obrasCount: Int,
     val obras: List<ArtworkDTO>,

@@ -1,8 +1,7 @@
 package com.swart.api.routes
 
 import com.swart.api.models.*
-import com.swart.api.models.dto.ArtworkDTO
-import com.swart.api.models.dto.ExhibitionFeedDTO
+import com.swart.api.models.dto.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -13,11 +12,25 @@ fun Route.exhibitionRoutes() {
     route("/api/feed") {
         get {
             val feed = transaction {
-                // Unimos Exposicion con Artista y Usuario para obtener el nombre del artista
-                val query = (Exposiciones innerJoin Artistas innerJoin Usuarios).selectAll()
+                // Obtenemos todas las exposiciones
+                val query = Exposiciones.selectAll()
                 
                 query.map { row ->
                     val idExpoEntity = row[Exposiciones.id]
+                    
+                    // Buscamos todos los artistas asociados a esta exposición
+                    val artistsData = (ArtistaExposiciones innerJoin Artistas innerJoin Usuarios)
+                        .select { ArtistaExposiciones.idExposicion eq idExpoEntity }
+                        .map { artistRow ->
+                            val aId = artistRow[ArtistaExposiciones.idArtista].value
+                            val aNom = artistRow[Usuarios.nombre]
+                            val aApe = artistRow[Usuarios.apellidos] ?: ""
+                            val aFullNom = "$aNom $aApe".trim()
+                            val aAvatar = artistRow[Usuarios.imgUrl] ?: "https://ui-avatars.com/api/?name=${aFullNom.replace(" ", "+")}&background=random"
+                            ArtistFeedDTO(id = aId, nombre = aFullNom, avatarUrl = aAvatar)
+                        }
+                    
+                    val primaryArtist = artistsData.firstOrNull() ?: ArtistFeedDTO(0L, "Artista Desconocido", "")
                     
                     // Buscamos las obras de esta exposición concreta
                     val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
@@ -42,28 +55,22 @@ fun Route.exhibitionRoutes() {
                     } else {
                         emptyList()
                     }
-                    
-                    val nombre = row[Usuarios.nombre]
-                    val apellidos = row[Usuarios.apellidos] ?: ""
-                    val nombreCompleto = "$nombre $apellidos".trim()
-                    
-                    // Usamos la foto del artista si existe, sino un fallback
-                    val avatarUrl = row[Usuarios.imgUrl] ?: "https://ui-avatars.com/api/?name=${nombreCompleto.replace(" ", "+")}&background=random"
 
                     ExhibitionFeedDTO(
                         idExposicion = idExpoEntity.value,
-                        idArtista = row[Exposiciones.idArtista].value,
+                        idArtista = primaryArtist.id,
                         titulo = row[Exposiciones.titulo],
                         descrip = row[Exposiciones.descrip],
-                        artistaNombre = nombreCompleto,
-                        artistaAvatar = avatarUrl,
+                        artistaNombre = primaryArtist.nombre,
+                        artistaAvatar = primaryArtist.avatarUrl,
+                        artistas = artistsData,
                         isNew = true, 
                         obrasCount = obras.size,
                         obras = artworks,
                         exposicionImgUrl = row[Exposiciones.imgUrl],
                         tags = tags,
-                        fechaInicio = row[Exposiciones.fechaInicio]?.toString(),
-                        fechaFin = row[Exposiciones.fechaFin]?.toString(),
+                        fechaInicio = row[Exposiciones.fechaInicio],
+                        fechaFin = row[Exposiciones.fechaFin],
                         nombreLugar = row[Exposiciones.nombreLugar],
                         ubicacion = row[Exposiciones.ubicacion],
                         precio = row[Exposiciones.precio],
