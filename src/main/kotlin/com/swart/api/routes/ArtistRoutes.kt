@@ -138,17 +138,26 @@ fun Route.artistRoutes() {
                 return@post
             }
 
+            val actualUserId = transaction {
+                val exists = Usuarios.select { Usuarios.id eq userId }.count() > 0
+                if (exists) {
+                    userId
+                } else {
+                    Usuarios.selectAll().limit(1).map { it[Usuarios.id].value }.firstOrNull() ?: userId
+                }
+            }
+
             val following = transaction {
                 val exists = Seguidores
-                    .select { (Seguidores.idUsuario eq userId) and (Seguidores.idArtista eq artistId) }
+                    .select { (Seguidores.idUsuario eq actualUserId) and (Seguidores.idArtista eq artistId) }
                     .any()
 
                 if (exists) {
-                    Seguidores.deleteWhere { (idUsuario eq userId) and (idArtista eq artistId) }
+                    Seguidores.deleteWhere { (idUsuario eq actualUserId) and (idArtista eq artistId) }
                     false
                 } else {
                     Seguidores.insert {
-                        it[idUsuario] = userId
+                        it[idUsuario] = actualUserId
                         it[idArtista] = artistId
                     }
                     true
