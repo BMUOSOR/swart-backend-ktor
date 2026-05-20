@@ -37,9 +37,9 @@ fun Route.artistRoutes() {
                     val seguidoresCount = Seguidores.select { Seguidores.idArtista eq artistId }.count().toInt()
                     val exposicionesCount = ArtistaExposiciones.select { ArtistaExposiciones.idArtista eq artistId }.count().toInt()
 
-                    // 3. Obtener exposiciones activas
+                    // 3. Obtener todas las exposiciones (activas y finalizadas)
                     val activeExpositionsQuery = (Exposiciones innerJoin ArtistaExposiciones)
-                        .select { (ArtistaExposiciones.idArtista eq artistId) and (Exposiciones.activa eq true) }
+                        .select { ArtistaExposiciones.idArtista eq artistId }
 
                     val activeExhibitions = activeExpositionsQuery.map { row ->
                         val idExpoEntity = row[Exposiciones.id]
