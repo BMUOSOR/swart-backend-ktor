@@ -20,7 +20,6 @@ fun Route.artistRoutes() {
             }
 
             val artistProfile = transaction {
-                // 1. Obtener datos básicos del artista y usuario
                 val artistRow = (Artistas innerJoin Usuarios)
                     .select { Artistas.id eq artistId }
                     .singleOrNull()
@@ -31,13 +30,12 @@ fun Route.artistRoutes() {
                     val nombre = artistRow[Usuarios.nombre]
                     val apellidos = artistRow[Usuarios.apellidos] ?: ""
                     val nombreCompleto = "$nombre $apellidos".trim()
-                    val avatarUrl = artistRow[Usuarios.imgUrl] ?: "https://ui-avatars.com/api/?name=${nombreCompleto.replace(" ", "+")}&background=random"
+                    val avatarUrl = artistRow[Usuarios.imgUrl]
+                        ?: "https://ui-avatars.com/api/?name=${nombreCompleto.replace(" ", "+")}&background=random"
 
-                    // 2. Conteo de seguidores y exposiciones
                     val seguidoresCount = Seguidores.select { Seguidores.idArtista eq artistId }.count().toInt()
                     val exposicionesCount = ArtistaExposiciones.select { ArtistaExposiciones.idArtista eq artistId }.count().toInt()
 
-                    // 3. Obtener todas las exposiciones (activas y finalizadas)
                     val activeExpositionsQuery = (Exposiciones innerJoin ArtistaExposiciones)
                         .select { ArtistaExposiciones.idArtista eq artistId }
 
@@ -45,8 +43,8 @@ fun Route.artistRoutes() {
                         val idExpoEntity = row[Exposiciones.id]
                         val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
                         val obrasIds = obras.map { it[Obras.id] }
-                        
-                        val artworks = obras.mapNotNull { 
+
+                        val artworks = obras.mapNotNull {
                             val imgUrl = it[Obras.imgUrl]
                             if (imgUrl != null) {
                                 ArtworkDTO(
@@ -88,7 +86,6 @@ fun Route.artistRoutes() {
                         )
                     }
 
-                    // 4. Obtener obras en venta (precio > 0)
                     val worksForSaleQuery = (Obras innerJoin Exposiciones innerJoin ArtistaExposiciones)
                         .select { (ArtistaExposiciones.idArtista eq artistId) and (Obras.precio greater 0.0) }
 
@@ -127,45 +124,68 @@ fun Route.artistRoutes() {
                 call.respond(artistProfile)
             }
         }
-    }
 
-    route("/api/artists/{id}/follow") {
-        post {
-            val artistId = call.parameters["id"]?.toLongOrNull()
-            val userId = call.request.queryParameters["userId"]?.toLongOrNull()
+        // GET /api/artists/{id}/follow?userId=X  → obtener estado de seguimiento
+        // POST /api/artists/{id}/follow?userId=X  → toggle seguimiento
+        route("follow") {
+            get {
+                val artistId = call.parameters["id"]?.toLongOrNull()
+                val userId = call.request.queryParameters["userId"]?.toLongOrNull()
 
-            if (artistId == null || userId == null) {
-                call.respond(HttpStatusCode.BadRequest, "ID de artista o ID de usuario inválido")
-                return@post
-            }
-
-            val actualUserId = transaction {
-                val exists = Usuarios.select { Usuarios.id eq userId }.count() > 0
-                if (exists) {
-                    userId
-                } else {
-                    Usuarios.selectAll().limit(1).map { it[Usuarios.id].value }.firstOrNull() ?: userId
+                if (artistId == null || userId == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID de artista o ID de usuario inválido")
+                    return@get
                 }
+
+                val actualUserId = transaction {
+                    val exists = Usuarios.select { Usuarios.id eq userId }.count() > 0
+                    if (exists) userId
+                    else Usuarios.selectAll().limit(1).map { it[Usuarios.id].value }.firstOrNull() ?: userId
+                }
+
+                val isFollowing = transaction {
+                    Seguidores.select {
+                        (Seguidores.idUsuario eq actualUserId) and (Seguidores.idArtista eq artistId)
+                    }.any()
+                }
+
+                call.respond(HttpStatusCode.OK, mapOf("following" to isFollowing))
             }
 
-            val following = transaction {
-                val exists = Seguidores
-                    .select { (Seguidores.idUsuario eq actualUserId) and (Seguidores.idArtista eq artistId) }
-                    .any()
+            post {
+                val artistId = call.parameters["id"]?.toLongOrNull()
+                val userId = call.request.queryParameters["userId"]?.toLongOrNull()
 
-                if (exists) {
-                    Seguidores.deleteWhere { (idUsuario eq actualUserId) and (idArtista eq artistId) }
-                    false
-                } else {
-                    Seguidores.insert {
-                        it[idUsuario] = actualUserId
-                        it[idArtista] = artistId
+                if (artistId == null || userId == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID de artista o ID de usuario inválido")
+                    return@post
+                }
+
+                val actualUserId = transaction {
+                    val exists = Usuarios.select { Usuarios.id eq userId }.count() > 0
+                    if (exists) userId
+                    else Usuarios.selectAll().limit(1).map { it[Usuarios.id].value }.firstOrNull() ?: userId
+                }
+
+                val following = transaction {
+                    val exists = Seguidores.select {
+                        (Seguidores.idUsuario eq actualUserId) and (Seguidores.idArtista eq artistId)
+                    }.any()
+
+                    if (exists) {
+                        Seguidores.deleteWhere { (idUsuario eq actualUserId) and (idArtista eq artistId) }
+                        false
+                    } else {
+                        Seguidores.insert {
+                            it[idUsuario] = actualUserId
+                            it[idArtista] = artistId
+                        }
+                        true
                     }
-                    true
                 }
-            }
 
-            call.respond(HttpStatusCode.OK, mapOf("following" to following))
+                call.respond(HttpStatusCode.OK, mapOf("following" to following))
+            }
         }
     }
 }
