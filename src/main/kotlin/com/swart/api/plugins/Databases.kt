@@ -18,7 +18,8 @@ fun Application.configureDatabases() {
         username = dbUser
         password = dbPassword
         driverClassName = "org.postgresql.Driver"
-        maximumPoolSize = 10
+        maximumPoolSize = 5      // Supabase free tier: max 15 conexiones en session mode
+        minimumIdle = 2          // Mantener pocas conexiones idle
         isAutoCommit = false
         transactionIsolation = "TRANSACTION_REPEATABLE_READ"
         validate()
