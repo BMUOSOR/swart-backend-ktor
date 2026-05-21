@@ -15,7 +15,7 @@ data class UpdateExhibitionRequest(
 
 @Serializable
 data class ExhibitionDetailDTO(
-    val idExposicion: Int,
+    val idExposicion: Long,
     val titulo: String,
     val descrip: String?,
     val nombreLugar: String?,
