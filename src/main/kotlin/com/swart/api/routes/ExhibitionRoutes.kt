@@ -7,6 +7,7 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -98,7 +99,8 @@ fun Route.exhibitionRoutes() {
                 val expoRow = Exposiciones.select { Exposiciones.id eq id }.singleOrNull()
                     ?: return@transaction null
 
-                val obras = Obras.select { Obras.idExposicion eq Exposiciones.id.wrap(id) }.toList()
+                val idExpoEntity = expoRow[Exposiciones.id]
+                val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
                 val obrasIds = obras.map { it[Obras.id] }
 
                 val artworks = obras.mapNotNull {
@@ -118,7 +120,7 @@ fun Route.exhibitionRoutes() {
                 } else emptyList()
 
                 ExhibitionDetailDTO(
-                    idExposicion = expoRow[Exposiciones.id].value,
+                    idExposicion = idExpoEntity.value,
                     titulo = expoRow[Exposiciones.titulo],
                     descrip = expoRow[Exposiciones.descrip],
                     nombreLugar = expoRow[Exposiciones.nombreLugar],
@@ -163,27 +165,32 @@ fun Route.exhibitionRoutes() {
                 }
 
                 if (rows > 0 && req.tags.isNotEmpty()) {
-                    val obrasIds = Obras.select { Obras.idExposicion eq Exposiciones.id.wrap(id) }
-                        .map { it[Obras.id] }
+                    // Buscar las obras de esta exposición para actualizar sus tags
+                    val expoRow = Exposiciones.select { Exposiciones.id eq id }.singleOrNull()
+                    if (expoRow != null) {
+                        val idExpoEntity = expoRow[Exposiciones.id]
+                        val obrasRows = Obras.select { Obras.idExposicion eq idExpoEntity }
+                        val obrasIds = obrasRows.map { it[Obras.id] }
 
-                    if (obrasIds.isNotEmpty()) {
-                        TagObras.deleteWhere { TagObras.idObra inList obrasIds }
+                        if (obrasIds.isNotEmpty()) {
+                            TagObras.deleteWhere { TagObras.idObra inList obrasIds }
 
-                        req.tags.forEach { tagNombre ->
-                            val tagId = Tags.select { Tags.nombre eq tagNombre }
-                                .firstOrNull()?.get(Tags.id)
-                                ?: Tags.insertAndGetId {
-                                    it[nombre] = tagNombre
-                                    it[descrip] = ""
-                                }
-
-                            obrasIds.forEach { obraId ->
-                                try {
-                                    TagObras.insert {
-                                        it[TagObras.idTag] = tagId
-                                        it[TagObras.idObra] = obraId
+                            req.tags.forEach { tagNombre ->
+                                val tagId = Tags.select { Tags.nombre eq tagNombre }
+                                    .firstOrNull()?.get(Tags.id)
+                                    ?: Tags.insertAndGetId {
+                                        it[nombre] = tagNombre
+                                        it[descrip] = ""
                                     }
-                                } catch (e: Exception) { /* ignore duplicates */ }
+
+                                obrasIds.forEach { obraId ->
+                                    try {
+                                        TagObras.insert {
+                                            it[TagObras.idTag] = tagId
+                                            it[TagObras.idObra] = obraId
+                                        }
+                                    } catch (e: Exception) { /* ignorar duplicados */ }
+                                }
                             }
                         }
                     }
@@ -204,16 +211,26 @@ fun Route.exhibitionRoutes() {
                 ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
 
             val deleted = transaction {
-                val expoIdWrapped = Exposiciones.id.wrap(id)
+                val expoRow = Exposiciones.select { Exposiciones.id eq id }.singleOrNull()
+                    ?: return@transaction false
 
-                val obrasIds = Obras.select { Obras.idExposicion eq expoIdWrapped }.map { it[Obras.id] }
+                val idExpoEntity = expoRow[Exposiciones.id]
 
+                // 1. Obtener obras
+                val obrasIds = Obras.select { Obras.idExposicion eq idExpoEntity }.map { it[Obras.id] }
+
+                // 2. Eliminar tags de obras
                 if (obrasIds.isNotEmpty()) {
                     TagObras.deleteWhere { TagObras.idObra inList obrasIds }
                 }
 
-                Obras.deleteWhere { Obras.idExposicion eq expoIdWrapped }
-                ArtistaExposiciones.deleteWhere { ArtistaExposiciones.idExposicion eq expoIdWrapped }
+                // 3. Eliminar obras
+                Obras.deleteWhere { Obras.idExposicion eq idExpoEntity }
+
+                // 4. Eliminar relación artista-exposición
+                ArtistaExposiciones.deleteWhere { ArtistaExposiciones.idExposicion eq idExpoEntity }
+
+                // 5. Eliminar la exposición
                 Exposiciones.deleteWhere { Exposiciones.id eq id } > 0
             }
 
