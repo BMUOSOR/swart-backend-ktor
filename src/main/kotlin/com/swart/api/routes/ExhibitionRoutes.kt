@@ -7,7 +7,6 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -87,7 +86,7 @@ fun Route.exhibitionRoutes() {
         get { handleFeed() }
     }
 
-    // ── Detalle / Edición / Eliminación de exposición ──────────────────────
+    // ── Detalle / Edición / Eliminación de exposición ─────────────────────
     route("/api/exhibitions/{id}") {
 
         // GET → devuelve los datos completos de una exposición para editar
@@ -165,15 +164,15 @@ fun Route.exhibitionRoutes() {
                 }
 
                 if (rows > 0 && req.tags.isNotEmpty()) {
-                    // Buscar las obras de esta exposición para actualizar sus tags
                     val expoRow = Exposiciones.select { Exposiciones.id eq id }.singleOrNull()
                     if (expoRow != null) {
                         val idExpoEntity = expoRow[Exposiciones.id]
-                        val obrasRows = Obras.select { Obras.idExposicion eq idExpoEntity }
-                        val obrasIds = obrasRows.map { it[Obras.id] }
+                        val obrasRows = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
 
-                        if (obrasIds.isNotEmpty()) {
-                            TagObras.deleteWhere { TagObras.idObra inList obrasIds }
+                        // Eliminar y reinsertar tags obra por obra
+                        obrasRows.forEach { obraRow ->
+                            val obraId = obraRow[Obras.id]
+                            TagObras.deleteWhere { idObra eq obraId }
 
                             req.tags.forEach { tagNombre ->
                                 val tagId = Tags.select { Tags.nombre eq tagNombre }
@@ -182,15 +181,12 @@ fun Route.exhibitionRoutes() {
                                         it[nombre] = tagNombre
                                         it[descrip] = ""
                                     }
-
-                                obrasIds.forEach { obraId ->
-                                    try {
-                                        TagObras.insert {
-                                            it[TagObras.idTag] = tagId
-                                            it[TagObras.idObra] = obraId
-                                        }
-                                    } catch (e: Exception) { /* ignorar duplicados */ }
-                                }
+                                try {
+                                    TagObras.insert {
+                                        it[TagObras.idTag] = tagId
+                                        it[TagObras.idObra] = obraId
+                                    }
+                                } catch (e: Exception) { /* ignorar duplicados */ }
                             }
                         }
                     }
@@ -216,21 +212,20 @@ fun Route.exhibitionRoutes() {
 
                 val idExpoEntity = expoRow[Exposiciones.id]
 
-                // 1. Obtener obras
-                val obrasIds = Obras.select { Obras.idExposicion eq idExpoEntity }.map { it[Obras.id] }
-
-                // 2. Eliminar tags de obras
-                if (obrasIds.isNotEmpty()) {
-                    TagObras.deleteWhere { TagObras.idObra inList obrasIds }
+                // 1. Obtener obras y eliminar sus tags obra por obra
+                val obrasRows = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
+                obrasRows.forEach { obraRow ->
+                    val obraId = obraRow[Obras.id]
+                    TagObras.deleteWhere { idObra eq obraId }
                 }
 
-                // 3. Eliminar obras
-                Obras.deleteWhere { Obras.idExposicion eq idExpoEntity }
+                // 2. Eliminar obras
+                Obras.deleteWhere { idExposicion eq idExpoEntity }
 
-                // 4. Eliminar relación artista-exposición
-                ArtistaExposiciones.deleteWhere { ArtistaExposiciones.idExposicion eq idExpoEntity }
+                // 3. Eliminar relación artista-exposición
+                ArtistaExposiciones.deleteWhere { idExposicion eq idExpoEntity }
 
-                // 5. Eliminar la exposición
+                // 4. Eliminar la exposición
                 Exposiciones.deleteWhere { Exposiciones.id eq id } > 0
             }
 
