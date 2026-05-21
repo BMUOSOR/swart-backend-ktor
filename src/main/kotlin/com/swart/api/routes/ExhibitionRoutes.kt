@@ -91,7 +91,7 @@ fun Route.exhibitionRoutes() {
 
         // GET → devuelve los datos completos de una exposición para editar
         get {
-            val id = call.parameters["id"]?.toIntOrNull()
+            val id = call.parameters["id"]?.toLongOrNull()
                 ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
 
             val detail = transaction {
@@ -128,7 +128,7 @@ fun Route.exhibitionRoutes() {
                     imgUrl = expoRow[Exposiciones.imgUrl],
                     precio = expoRow[Exposiciones.precio],
                     score = expoRow[Exposiciones.score],
-                    activa = expoRow[Exposiciones.activa] ?: true,
+                    activa = expoRow[Exposiciones.activa],
                     obras = artworks,
                     tags = tags
                 )
@@ -143,7 +143,7 @@ fun Route.exhibitionRoutes() {
 
         // PUT → actualiza los datos de la exposición
         put {
-            val id = call.parameters["id"]?.toIntOrNull()
+            val id = call.parameters["id"]?.toLongOrNull()
                 ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
 
             val req = try {
@@ -163,7 +163,6 @@ fun Route.exhibitionRoutes() {
                 }
 
                 if (rows > 0 && req.tags.isNotEmpty()) {
-                    // Actualizar tags: eliminar los viejos y añadir los nuevos
                     val obrasIds = Obras.select { Obras.idExposicion eq Exposiciones.id.wrap(id) }
                         .map { it[Obras.id] }
 
@@ -175,14 +174,16 @@ fun Route.exhibitionRoutes() {
                                 .firstOrNull()?.get(Tags.id)
                                 ?: Tags.insertAndGetId {
                                     it[nombre] = tagNombre
-                                    it[descrip] = null
+                                    it[descrip] = ""
                                 }
 
                             obrasIds.forEach { obraId ->
-                                TagObras.insert {
-                                    it[TagObras.idTag] = tagId
-                                    it[TagObras.idObra] = obraId
-                                }
+                                try {
+                                    TagObras.insert {
+                                        it[TagObras.idTag] = tagId
+                                        it[TagObras.idObra] = obraId
+                                    }
+                                } catch (e: Exception) { /* ignore duplicates */ }
                             }
                         }
                     }
@@ -199,27 +200,20 @@ fun Route.exhibitionRoutes() {
 
         // DELETE → elimina la exposición y sus relaciones
         delete {
-            val id = call.parameters["id"]?.toIntOrNull()
+            val id = call.parameters["id"]?.toLongOrNull()
                 ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
 
             val deleted = transaction {
                 val expoIdWrapped = Exposiciones.id.wrap(id)
 
-                // 1. Obtener obras asociadas
                 val obrasIds = Obras.select { Obras.idExposicion eq expoIdWrapped }.map { it[Obras.id] }
 
-                // 2. Eliminar tags de obras
                 if (obrasIds.isNotEmpty()) {
                     TagObras.deleteWhere { TagObras.idObra inList obrasIds }
                 }
 
-                // 3. Eliminar obras
                 Obras.deleteWhere { Obras.idExposicion eq expoIdWrapped }
-
-                // 4. Eliminar relación artista-exposición
                 ArtistaExposiciones.deleteWhere { ArtistaExposiciones.idExposicion eq expoIdWrapped }
-
-                // 5. Eliminar la exposición
                 Exposiciones.deleteWhere { Exposiciones.id eq id } > 0
             }
 
