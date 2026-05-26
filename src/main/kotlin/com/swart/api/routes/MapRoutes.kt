@@ -67,5 +67,18 @@ fun Route.mapRoutes() {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Error fetching map pins: ${e.message}"))
             }
         }
+
+        get("/verify-address") {
+            val address = call.request.queryParameters["address"]
+            if (address.isNullOrBlank()) {
+                return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Dirección vacía"))
+            }
+            val result = com.swart.api.services.GeocodingService.verifyAddress(address)
+            if (result == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "La dirección no es válida o no existe"))
+            } else {
+                call.respond(HttpStatusCode.OK, result)
+            }
+        }
     }
 }

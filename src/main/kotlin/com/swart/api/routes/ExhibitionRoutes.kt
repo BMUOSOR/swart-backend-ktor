@@ -11,6 +11,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
+import com.swart.api.services.GeocodingService
 
 fun Route.exhibitionRoutes() {
     suspend fun io.ktor.util.pipeline.PipelineContext<Unit, ApplicationCall>.handleFeed() {
@@ -154,6 +155,15 @@ fun Route.exhibitionRoutes() {
                 return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Datos inválidos"))
             }
 
+            // Verificar dirección antes de la transacción si se provee una ubicación
+            val coordinates = if (!req.ubicacion.isNullOrBlank()) {
+                val result = GeocodingService.verifyAddress(req.ubicacion)
+                if (result == null) {
+                    return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "La dirección no es válida o no existe"))
+                }
+                result
+            } else null
+
             val updated = transaction {
                 val rows = Exposiciones.update({ Exposiciones.id eq id }) {
                     it[titulo] = req.titulo
@@ -164,13 +174,30 @@ fun Route.exhibitionRoutes() {
                     it[fechaFin] = req.fechaFin
                 }
 
-                if (rows > 0 && req.tags.isNotEmpty()) {
+                if (rows > 0) {
+                    // Actualizar coordenadas en la tabla Balizas si se resolvió la dirección
+                    if (coordinates != null) {
+                        val latVal = coordinates.lat.toDoubleOrNull() ?: 0.0
+                        val lonVal = coordinates.lon.toDoubleOrNull() ?: 0.0
+                        val exists = Balizas.select { Balizas.id eq id }.count() > 0
+                        if (exists) {
+                            Balizas.update({ Balizas.id eq id }) {
+                                it[lat] = latVal
+                                it[lon] = lonVal
+                            }
+                        } else {
+                            Balizas.insert {
+                                it[this.id] = id
+                                it[lat] = latVal
+                                it[lon] = lonVal
+                            }
+                        }
+                    }
+
                     val expoRow = Exposiciones.select { Exposiciones.id eq id }.singleOrNull()
                     if (expoRow != null) {
                         val idExpoEntity = expoRow[Exposiciones.id]
                         val obrasRows = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
-
-                        // Eliminar solo tags de categoría y reinsertar los nuevos
                         val categoryTagIds = Tags.select { Tags.nombre inList setOf("Pintura", "Escultura", "Fotografía") }
                             .map { it[Tags.id] }
 
