@@ -23,6 +23,9 @@ fun Route.authRoutes() {
                     val existing = Usuarios.select { Usuarios.usuario eq req.usuario }.singleOrNull()
                     
                     var userId = existing?.get(Usuarios.id)
+                    val existingImgUrl = existing?.get(Usuarios.imgUrl)
+                    val userImgUrl = existingImgUrl ?: "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/usuario_chica_3.jpg"
+
                     if (existing != null) {
                         // User exists, verify password
                         if (existing[Usuarios.password] != req.password) {
@@ -59,6 +62,7 @@ fun Route.authRoutes() {
                             it[password] = req.password // Storing in plain text as requested for MVP
                             it[nombre] = req.nombre
                             it[apellidos] = req.apellidos
+                            it[imgUrl] = userImgUrl
                         }
                     }
 
@@ -79,7 +83,8 @@ fun Route.authRoutes() {
                         nombre = req.nombre,
                         apellidos = req.apellidos,
                         usuario = req.usuario,
-                        role = req.role.lowercase()
+                        role = req.role.lowercase(),
+                        imgUrl = userImgUrl
                     )
                 }
                 
@@ -127,7 +132,8 @@ fun Route.authRoutes() {
                         nombre = userRow[Usuarios.nombre],
                         apellidos = userRow[Usuarios.apellidos],
                         usuario = userRow[Usuarios.usuario],
-                        role = requestedRole
+                        role = requestedRole,
+                        imgUrl = userRow[Usuarios.imgUrl]
                     )
                 }
 
