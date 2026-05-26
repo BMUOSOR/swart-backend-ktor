@@ -17,5 +17,6 @@ fun Application.configureRouting() {
         curationRoutes()
         mapRoutes()
         artistRoutes()
+        artworkRoutes()
     }
 }

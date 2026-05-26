@@ -9,6 +9,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.exhibitionRoutes() {
@@ -169,10 +170,15 @@ fun Route.exhibitionRoutes() {
                         val idExpoEntity = expoRow[Exposiciones.id]
                         val obrasRows = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
 
-                        // Eliminar y reinsertar tags obra por obra
+                        // Eliminar solo tags de categoría y reinsertar los nuevos
+                        val categoryTagIds = Tags.select { Tags.nombre inList setOf("Pintura", "Escultura", "Fotografía") }
+                            .map { it[Tags.id] }
+
                         obrasRows.forEach { obraRow ->
                             val obraId = obraRow[Obras.id]
-                            TagObras.deleteWhere { idObra eq obraId }
+                            if (categoryTagIds.isNotEmpty()) {
+                                TagObras.deleteWhere { (idObra eq obraId) and (idTag inList categoryTagIds) }
+                            }
 
                             req.tags.forEach { tagNombre ->
                                 val tagId = Tags.select { Tags.nombre eq tagNombre }
