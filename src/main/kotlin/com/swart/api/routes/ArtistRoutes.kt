@@ -169,6 +169,11 @@ fun Route.artistRoutes() {
                     else Usuarios.selectAll().limit(1).map { it[Usuarios.id].value }.firstOrNull() ?: userId
                 }
 
+                if (artistId == actualUserId) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "No puedes seguirte a ti mismo"))
+                    return@post
+                }
+
                 val following = transaction {
                     val exists = Seguidores.select {
                         (Seguidores.idUsuario eq actualUserId) and (Seguidores.idArtista eq artistId)
