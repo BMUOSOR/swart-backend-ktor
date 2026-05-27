@@ -27,5 +27,7 @@ data class ExhibitionDetailDTO(
     val score: Double?,
     val activa: Boolean,
     val obras: List<ArtworkDTO>,
-    val tags: List<String>
+    val tags: List<String>,
+    val esColaborativa: Boolean = false,
+    val artistas: List<ArtistFeedDTO> = emptyList()
 )

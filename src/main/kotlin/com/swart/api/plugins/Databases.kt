@@ -32,6 +32,7 @@ fun Application.configureDatabases() {
         exec("ALTER TABLE \"Exposicion\" DROP COLUMN IF EXISTS \"idArtista\" CASCADE;")
         exec("DROP TABLE IF EXISTS \"Feed\" CASCADE;")
         exec("DROP TABLE IF EXISTS \"InteresadoTagPreference\" CASCADE;")
+        exec("ALTER TABLE \"Exposicion\" ADD COLUMN IF NOT EXISTS \"es_colaborativa\" BOOLEAN DEFAULT FALSE;")
         SchemaUtils.create(
             Usuarios,
             Artistas,
@@ -45,7 +46,8 @@ fun Application.configureDatabases() {
             Feeds,
             InteresadoTagPreferences,
             Seguidores,
-            ArtistaExposiciones
+            ArtistaExposiciones,
+            Invitaciones
         )
     }
 }

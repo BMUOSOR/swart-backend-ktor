@@ -18,5 +18,6 @@ fun Application.configureRouting() {
         mapRoutes()
         artistRoutes()
         artworkRoutes()
+        invitationRoutes()
     }
 }

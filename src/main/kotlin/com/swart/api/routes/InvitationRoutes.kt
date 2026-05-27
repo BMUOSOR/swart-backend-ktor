@@ -1,0 +1,97 @@
+package com.swart.api.routes
+
+import com.swart.api.models.*
+import com.swart.api.models.dto.*
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.transactions.transaction
+
+fun Route.invitationRoutes() {
+
+    // GET /api/invitations/{userId} → invitaciones pendientes del artista
+    route("/api/invitations/{userId}") {
+        get {
+            val userId = call.parameters["userId"]?.toLongOrNull()
+                ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+
+            val invitations = transaction {
+                Invitaciones
+                    .select { (Invitaciones.idArtistaReceiver eq userId) and (Invitaciones.estado eq "pendiente") }
+                    .mapNotNull { row ->
+                        val idExpo = row[Invitaciones.idExposicion].value
+                        val expoRow = Exposiciones.select { Exposiciones.id eq idExpo }.singleOrNull()
+                            ?: return@mapNotNull null
+
+                        val senderId = row[Invitaciones.idArtistaSender].value
+                        val senderRow = (Artistas innerJoin Usuarios)
+                            .select { Artistas.id eq senderId }
+                            .singleOrNull() ?: return@mapNotNull null
+
+                        val senderNombre = senderRow[Usuarios.nombre] + " " + (senderRow[Usuarios.apellidos] ?: "")
+                        val senderAvatar = senderRow[Usuarios.imgUrl]
+
+                        InvitationDto(
+                            idInvitacion = row[Invitaciones.id].value,
+                            idExposicion = idExpo,
+                            tituloExposicion = expoRow[Exposiciones.titulo],
+                            exposicionImgUrl = expoRow[Exposiciones.imgUrl],
+                            idArtistaSender = senderId,
+                            nombreArtistaSender = senderNombre.trim(),
+                            avatarArtistaSender = senderAvatar,
+                            estado = row[Invitaciones.estado]
+                        )
+                    }
+            }
+
+            call.respond(invitations)
+        }
+    }
+
+    // PUT /api/invitations/{id}/respond → aceptar o rechazar
+    route("/api/invitations/{id}/respond") {
+        put {
+            val id = call.parameters["id"]?.toLongOrNull()
+                ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+
+            val req = try {
+                call.receive<RespondInvitationRequest>()
+            } catch (e: Exception) {
+                return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Datos inválidos"))
+            }
+
+            val updated = transaction {
+                val invRow = Invitaciones.select { Invitaciones.id eq id }.singleOrNull()
+                    ?: return@transaction false
+
+                val nuevoEstado = if (req.aceptar) "aceptada" else "rechazada"
+                Invitaciones.update({ Invitaciones.id eq id }) {
+                    it[estado] = nuevoEstado
+                }
+
+                // Si acepta, añadir al artista en ArtistaExposiciones
+                if (req.aceptar) {
+                    val idExpo = invRow[Invitaciones.idExposicion].value
+                    val idArtista = invRow[Invitaciones.idArtistaReceiver].value
+                    val alreadyExists = ArtistaExposiciones
+                        .select { (ArtistaExposiciones.idArtista eq idArtista) and (ArtistaExposiciones.idExposicion eq idExpo) }
+                        .any()
+                    if (!alreadyExists) {
+                        ArtistaExposiciones.insert {
+                            it[ArtistaExposiciones.idArtista] = idArtista
+                            it[ArtistaExposiciones.idExposicion] = idExpo
+                        }
+                    }
+                }
+
+                true
+            }
+
+            call.respond(mapOf("success" to updated))
+        }
+    }
+}

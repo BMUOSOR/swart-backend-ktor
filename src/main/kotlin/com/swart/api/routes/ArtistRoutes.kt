@@ -8,7 +8,9 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
+import io.ktor.server.request.*
 
 fun Route.artistRoutes() {
     route("/api/artists/{id}") {
@@ -185,6 +187,47 @@ fun Route.artistRoutes() {
                 }
 
                 call.respond(HttpStatusCode.OK, mapOf("following" to following))
+            }
+        }
+
+        // GET /api/artists/{id}/mutuals → artistas con seguimiento mutuo
+        route("mutuals") {
+            get {
+                val artistId = call.parameters["id"]?.toLongOrNull()
+                if (artistId == null) {
+                    call.respond(HttpStatusCode.BadRequest, "ID de artista inválido")
+                    return@get
+                }
+
+                val mutuals = transaction {
+                    // Artistas que sigo (yo → ellos)
+                    val iFollow = Seguidores
+                        .select { Seguidores.idUsuario eq artistId }
+                        .map { it[Seguidores.idArtista].value }
+
+                    // Artistas que me siguen (ellos → yo)
+                    val followMe = Seguidores
+                        .select { Seguidores.idArtista eq artistId }
+                        .map { it[Seguidores.idUsuario].value }
+
+                    // Intersección: mutuos
+                    val mutualIds = iFollow.intersect(followMe.toSet())
+
+                    mutualIds.mapNotNull { mutualId ->
+                        val row = (Artistas innerJoin Usuarios)
+                            .select { Artistas.id eq mutualId }
+                            .singleOrNull() ?: return@mapNotNull null
+
+                        val nombre = row[Usuarios.nombre] + " " + (row[Usuarios.apellidos] ?: "")
+                        MutualArtistDto(
+                            id = mutualId,
+                            nombre = nombre.trim(),
+                            avatarUrl = row[Usuarios.imgUrl]
+                        )
+                    }
+                }
+
+                call.respond(mutuals)
             }
         }
     }

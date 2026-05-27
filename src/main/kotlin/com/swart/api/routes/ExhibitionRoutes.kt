@@ -12,6 +12,9 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 import com.swart.api.services.GeocodingService
+import com.swart.api.models.Invitaciones
+import com.swart.api.models.dto.CreateExhibitionRequest
+import com.swart.api.models.dto.CreateArtworkRequest
 
 fun Route.exhibitionRoutes() {
     suspend fun io.ktor.util.pipeline.PipelineContext<Unit, ApplicationCall>.handleFeed() {
@@ -88,6 +91,60 @@ fun Route.exhibitionRoutes() {
         get { handleFeed() }
     }
 
+    // ── Crear nueva exposición ────────────────────────────────────────────
+    // POST /api/exhibitions → crea nueva exposición
+    route("/api/exhibitions") {
+        post {
+            val req = try {
+                call.receive<CreateExhibitionRequest>()
+            } catch (e: Exception) {
+                return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Datos inválidos"))
+            }
+
+            val newId = transaction {
+                val idExpo = Exposiciones.insertAndGetId {
+                    it[titulo] = req.titulo
+                    it[descrip] = req.descrip
+                    it[nombreLugar] = req.nombreLugar
+                    it[ubicacion] = req.ubicacion
+                    it[fechaInicio] = req.fechaInicio
+                    it[fechaFin] = req.fechaFin
+                    it[imgUrl] = req.imgUrl
+                    it[precio] = req.precio
+                    it[activa] = req.activa
+                    it[esColaborativa] = req.esColaborativa
+                    it[visitantes] = 0L
+                    it[score] = 0.0
+                }
+
+                // Asociar artista creador
+                ArtistaExposiciones.insert {
+                    it[idArtista] = req.artistaId
+                    it[idExposicion] = idExpo
+                }
+
+                // Si colaborativa, enviar invitaciones
+                if (req.esColaborativa) {
+                    req.artistasInvitadosIds.forEach { idInvitado ->
+                        try {
+                            Invitaciones.insert {
+                                it[idExposicion] = idExpo
+                                it[idArtistaSender] = req.artistaId
+                                it[idArtistaReceiver] = idInvitado
+                                it[estado] = "pendiente"
+                                it[fechaCreacion] = java.time.LocalDate.now().toString()
+                            }
+                        } catch (e: Exception) { /* ignorar */ }
+                    }
+                }
+
+                idExpo.value
+            }
+
+            call.respond(HttpStatusCode.Created, mapOf("idExposicion" to newId))
+        }
+    }
+
     // ── Detalle / Edición / Eliminación de exposición ─────────────────────
     route("/api/exhibitions/{id}") {
 
@@ -120,6 +177,18 @@ fun Route.exhibitionRoutes() {
                         .map { it[Tags.nombre] }
                 } else emptyList()
 
+                val artistas = (ArtistaExposiciones innerJoin Artistas innerJoin Usuarios)
+                    .select { ArtistaExposiciones.idExposicion eq idExpoEntity }
+                    .map { artistRow ->
+                        val aId = artistRow[ArtistaExposiciones.idArtista].value
+                        val aNom = artistRow[Usuarios.nombre]
+                        val aApe = artistRow[Usuarios.apellidos] ?: ""
+                        val aFullNom = "$aNom $aApe".trim()
+                        val aAvatar = artistRow[Usuarios.imgUrl]
+                            ?: "https://ui-avatars.com/api/?name=${aFullNom.replace(" ", "+")}&background=random"
+                        ArtistFeedDTO(id = aId, nombre = aFullNom, avatarUrl = aAvatar)
+                    }
+
                 ExhibitionDetailDTO(
                     idExposicion = idExpoEntity.value,
                     titulo = expoRow[Exposiciones.titulo],
@@ -133,7 +202,9 @@ fun Route.exhibitionRoutes() {
                     score = expoRow[Exposiciones.score],
                     activa = expoRow[Exposiciones.activa],
                     obras = artworks,
-                    tags = tags
+                    tags = tags,
+                    esColaborativa = expoRow[Exposiciones.esColaborativa],
+                    artistas = artistas
                 )
             }
 

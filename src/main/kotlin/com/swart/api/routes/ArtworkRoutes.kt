@@ -3,6 +3,7 @@ package com.swart.api.routes
 import com.swart.api.models.*
 import com.swart.api.models.dto.ArtworkDetailDTO
 import com.swart.api.models.dto.UpdateArtworkRequest
+import com.swart.api.models.dto.CreateArtworkRequest
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -15,6 +16,50 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.notInList
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.artworkRoutes() {
+    // POST /api/artworks → crea nueva obra
+    route("/api/artworks") {
+        post {
+            val req = try {
+                call.receive<CreateArtworkRequest>()
+            } catch (e: Exception) {
+                return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Datos de obra inválidos"))
+            }
+
+            val newId = transaction {
+                val obraId = Obras.insertAndGetId {
+                    it[idExposicion] = req.idExposicion
+                    it[titulo] = req.titulo
+                    it[descrip] = req.descrip
+                    it[imgUrl] = req.imgUrl
+                    it[precio] = if (req.disponibleCompra) (req.precio ?: 0.0) else 0.0
+                    it[archivo] = req.imgUrl ?: ""
+                    it[oculta] = false
+                    it[likes] = 0L
+                }
+
+                // Insertar tags
+                req.tags.forEach { tagNombre ->
+                    val tagId = Tags.select { Tags.nombre eq tagNombre }
+                        .firstOrNull()?.get(Tags.id)
+                        ?: Tags.insertAndGetId {
+                            it[nombre] = tagNombre
+                            it[descrip] = ""
+                        }
+                    try {
+                        TagObras.insert {
+                            it[idTag] = tagId
+                            it[idObra] = obraId
+                        }
+                    } catch (e: Exception) { /* ignorar duplicados */ }
+                }
+
+                obraId.value
+            }
+
+            call.respond(HttpStatusCode.Created, mapOf("idObra" to newId))
+        }
+    }
+
     route("/api/artworks/{id}") {
         
         // GET → Obtiene el detalle de la obra y sus tags asociados
