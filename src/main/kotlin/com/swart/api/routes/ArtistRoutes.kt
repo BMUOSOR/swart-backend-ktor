@@ -13,6 +13,36 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import io.ktor.server.request.*
 
 fun Route.artistRoutes() {
+    route("/api/artists") {
+        get {
+            val userId = call.request.queryParameters["userId"]?.toLongOrNull()
+            val artists = transaction {
+                val followedIds = if (userId != null) {
+                    Seguidores.select { Seguidores.idUsuario eq userId }
+                        .map { it[Seguidores.idArtista].value }
+                        .toSet()
+                } else emptySet()
+
+                (Artistas innerJoin Usuarios).selectAll().map { row ->
+                    val id = row[Artistas.id].value
+                    val nombre = row[Usuarios.nombre]
+                    val apellidos = row[Usuarios.apellidos] ?: ""
+                    val nombreCompleto = "$nombre $apellidos".trim()
+                    val avatarUrl = row[Usuarios.imgUrl]
+                        ?: "https://ui-avatars.com/api/?name=${nombreCompleto.replace(" ", "+")}&background=random"
+
+                    ArtistFollowDto(
+                        id = id,
+                        nombre = nombreCompleto,
+                        avatarUrl = avatarUrl,
+                        following = followedIds.contains(id)
+                    )
+                }
+            }
+            call.respond(artists)
+        }
+    }
+
     route("/api/artists/{id}") {
         get {
             val artistId = call.parameters["id"]?.toLongOrNull()

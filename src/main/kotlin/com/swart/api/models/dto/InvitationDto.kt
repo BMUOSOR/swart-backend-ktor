@@ -25,3 +25,11 @@ data class MutualArtistDto(
     val nombre: String,
     val avatarUrl: String?
 )
+
+@Serializable
+data class ArtistFollowDto(
+    val id: Long,
+    val nombre: String,
+    val avatarUrl: String?,
+    val following: Boolean
+)
