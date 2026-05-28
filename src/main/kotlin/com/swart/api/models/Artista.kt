@@ -4,7 +4,7 @@ import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 
 object Artistas : IdTable<Long>("\"Artista\"") {
-    override val id = reference("\"idArtista\"", Usuarios, onDelete = ReferenceOption.CASCADE)
+    override val id = reference("\"idArtista\"", Usuarios, onDelete = ReferenceOption.CASCADE, fkName = "fk_artista_usuario")
     val instagram = text("\"instagram\"").nullable()
     val whatsapp = text("\"whatsapp\"").nullable()
     val correo = text("\"correo\"").nullable()

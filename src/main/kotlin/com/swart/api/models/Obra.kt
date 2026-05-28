@@ -4,8 +4,8 @@ import org.jetbrains.exposed.dao.id.LongIdTable
 import org.jetbrains.exposed.sql.ReferenceOption
 
 object Obras : LongIdTable("\"Obra\"", "\"idObra\"") {
-    val idExposicion = reference("\"idExposicion\"", Exposiciones, onDelete = ReferenceOption.CASCADE)
-    val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE).nullable()
+    val idExposicion = reference("\"idExposicion\"", Exposiciones, onDelete = ReferenceOption.CASCADE, fkName = "fk_obras_exposicion")
+    val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE, fkName = "fk_obras_artista").nullable()
     val titulo = text("\"titulo\"").nullable()
     val descrip = text("\"descrip\"").nullable()
     val archivo = text("\"archivo\"")
