@@ -33,7 +33,8 @@ fun Application.configureDatabases() {
         exec("DROP TABLE IF EXISTS \"Feed\" CASCADE;")
         exec("DROP TABLE IF EXISTS \"InteresadoTagPreference\" CASCADE;")
         exec("ALTER TABLE \"Exposicion\" ADD COLUMN IF NOT EXISTS \"es_colaborativa\" BOOLEAN DEFAULT FALSE;")
-        SchemaUtils.createMissingTablesAndColumns(
+        exec("ALTER TABLE \"Obra\" ADD COLUMN IF NOT EXISTS \"idArtista\" BIGINT REFERENCES \"Artista\"(\"idArtista\") ON DELETE CASCADE;")
+        SchemaUtils.create(
             Usuarios,
             Artistas,
             Exposiciones,
