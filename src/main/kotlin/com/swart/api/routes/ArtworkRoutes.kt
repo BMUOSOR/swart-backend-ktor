@@ -28,6 +28,7 @@ fun Route.artworkRoutes() {
             val newId = transaction {
                 val obraId = Obras.insertAndGetId {
                     it[idExposicion] = req.idExposicion
+                    it[idArtista] = req.idArtista
                     it[titulo] = req.titulo
                     it[descrip] = req.descrip
                     it[imgUrl] = req.imgUrl

@@ -5,6 +5,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 
 object Obras : LongIdTable("\"Obra\"", "\"idObra\"") {
     val idExposicion = reference("\"idExposicion\"", Exposiciones, onDelete = ReferenceOption.CASCADE)
+    val idArtista = reference("\"idArtista\"", Artistas, onDelete = ReferenceOption.CASCADE).nullable()
     val titulo = text("\"titulo\"").nullable()
     val descrip = text("\"descrip\"").nullable()
     val archivo = text("\"archivo\"")

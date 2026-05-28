@@ -81,6 +81,7 @@ fun Route.artistRoutes() {
                             if (imgUrl != null) {
                                 ArtworkDTO(
                                     idObra = it[Obras.id].value,
+                                    idArtista = it[Obras.idArtista]?.value,
                                     titulo = it[Obras.titulo] ?: "Sin Título",
                                     imgUrl = imgUrl
                                 )

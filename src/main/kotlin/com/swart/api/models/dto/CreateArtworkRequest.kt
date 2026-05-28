@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CreateArtworkRequest(
     val idExposicion: Long,
+    val idArtista: Long,
     val titulo: String,
     val descrip: String? = null,
     val imgUrl: String? = null,

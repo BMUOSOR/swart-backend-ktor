@@ -39,15 +39,14 @@ fun Route.exhibitionRoutes() {
 
                 val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
                 val obrasIds = obras.map { it[Obras.id] }
-                val artworks = obras.mapNotNull {
+                val artworks = obras.map {
                     val imgUrl = it[Obras.imgUrl]
-                    if (imgUrl != null) {
-                        ArtworkDTO(
-                            idObra = it[Obras.id].value,
-                            titulo = it[Obras.titulo] ?: "Sin Título",
-                            imgUrl = imgUrl
-                        )
-                    } else null
+                    ArtworkDTO(
+                        idObra = it[Obras.id].value,
+                        idArtista = it[Obras.idArtista]?.value,
+                        titulo = it[Obras.titulo] ?: "Sin Título",
+                        imgUrl = imgUrl ?: ""
+                    )
                 }
 
                 val tags = if (obrasIds.isNotEmpty()) {
@@ -161,12 +160,13 @@ fun Route.exhibitionRoutes() {
                 val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
                 val obrasIds = obras.map { it[Obras.id] }
 
-                val artworks = obras.mapNotNull {
-                    val imgUrl = it[Obras.imgUrl] ?: return@mapNotNull null
+                val artworks = obras.map {
+                    val imgUrl = it[Obras.imgUrl]
                     ArtworkDTO(
                         idObra = it[Obras.id].value,
+                        idArtista = it[Obras.idArtista]?.value,
                         titulo = it[Obras.titulo] ?: "Sin Título",
-                        imgUrl = imgUrl
+                        imgUrl = imgUrl ?: ""
                     )
                 }
 
