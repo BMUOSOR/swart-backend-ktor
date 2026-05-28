@@ -5,11 +5,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UpdateExhibitionRequest(
     val titulo: String,
-    val descrip: String?,
-    val nombreLugar: String?,
-    val ubicacion: String?,
-    val fechaInicio: String?,
-    val fechaFin: String?,
+    val descrip: String? = null,
+    val nombreLugar: String? = null,
+    val ubicacion: String? = null,
+    val fechaInicio: String? = null,
+    val fechaFin: String? = null,
     val tags: List<String> = emptyList()
 )
 

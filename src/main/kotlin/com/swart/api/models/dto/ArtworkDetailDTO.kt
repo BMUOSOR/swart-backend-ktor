@@ -17,8 +17,8 @@ data class ArtworkDetailDTO(
 @Serializable
 data class UpdateArtworkRequest(
     val titulo: String,
-    val descrip: String?,
-    val precio: Double?,
-    val disponibleCompra: Boolean,
-    val tags: List<String>
+    val descrip: String? = null,
+    val precio: Double? = null,
+    val disponibleCompra: Boolean = false,
+    val tags: List<String> = emptyList()
 )
