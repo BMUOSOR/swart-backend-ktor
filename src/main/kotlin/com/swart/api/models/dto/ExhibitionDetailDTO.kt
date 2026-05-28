@@ -10,6 +10,7 @@ data class UpdateExhibitionRequest(
     val ubicacion: String? = null,
     val fechaInicio: String? = null,
     val fechaFin: String? = null,
+    val imgUrl: String? = null,
     val tags: List<String> = emptyList()
 )
 

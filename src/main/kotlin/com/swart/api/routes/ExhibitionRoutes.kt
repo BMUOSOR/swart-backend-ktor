@@ -243,6 +243,9 @@ fun Route.exhibitionRoutes() {
                     it[ubicacion] = req.ubicacion
                     it[fechaInicio] = req.fechaInicio
                     it[fechaFin] = req.fechaFin
+                    if (req.imgUrl != null) {
+                        it[imgUrl] = req.imgUrl
+                    }
                 }
 
                 if (rows > 0) {
