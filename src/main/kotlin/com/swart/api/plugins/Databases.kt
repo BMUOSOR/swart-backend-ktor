@@ -4,8 +4,9 @@ import com.swart.api.models.*
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.ktor.server.application.*
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Application.configureDatabases() {
@@ -50,5 +51,24 @@ fun Application.configureDatabases() {
             ArtistaExposiciones,
             Invitaciones
         )
+
+        // Data healing: Set Obras.idArtista to the creator artist (from ArtistaExposiciones) for any artworks where it is null
+        try {
+            val artworksWithNullArtist = Obras.select { Obras.idArtista.isNull() }.toList()
+            artworksWithNullArtist.forEach { row ->
+                val obraId = row[Obras.id]
+                val idExpo = row[Obras.idExposicion]
+                val firstArtistId = ArtistaExposiciones
+                    .select { ArtistaExposiciones.idExposicion eq idExpo }
+                    .firstOrNull()?.get(ArtistaExposiciones.idArtista)
+                if (firstArtistId != null) {
+                    Obras.update({ Obras.id eq obraId }) {
+                        it[idArtista] = firstArtistId
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

@@ -208,6 +208,7 @@ fun Route.seedRoutes() {
                     for (i in 0 until 8) {
                         val expoId = expoIds[i]
                         val prefix = obrasPrefixes[i]
+                        val artistId = expoData[i].third
 
                         val (category, subTagsList) = when (prefix) {
                             "obra_pintura1", "obra_pintura2" -> "Pintura" to SUBTAGS_PINTURA
@@ -219,6 +220,7 @@ fun Route.seedRoutes() {
                         for (j in 1..3) {
                             val obraId = Obras.insertAndGetId {
                                 it[idExposicion] = expoId
+                                it[idArtista] = artistId
                                 it[titulo] = obrasNombres[i][j - 1]
                                 it[descrip] = obrasDescripciones[i]
                                 it[archivo] = ""
