@@ -20,5 +20,6 @@ fun Application.configureRouting() {
         artworkRoutes()
         invitationRoutes()
         uploadRoutes()
+        chatRoutes()
     }
 }

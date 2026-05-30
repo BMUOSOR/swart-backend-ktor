@@ -49,7 +49,9 @@ fun Application.configureDatabases() {
             InteresadoTagPreferences,
             Seguidores,
             ArtistaExposiciones,
-            Invitaciones
+            Invitaciones,
+            Conversaciones,
+            Mensajes
         )
 
         // Data healing: Set Obras.idArtista to the creator artist (from ArtistaExposiciones) for any artworks where it is null
