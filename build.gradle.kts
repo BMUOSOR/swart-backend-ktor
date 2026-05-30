@@ -47,6 +47,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:$exposed_version")
     implementation("org.postgresql:postgresql:$postgres_version")
     implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation(files("libs/h2-2.2.220.jar"))
 
     implementation("ch.qos.logback:logback-classic:$logback_version")
     
