@@ -73,7 +73,7 @@ fun Route.artistRoutes() {
 
                     val activeExhibitions = activeExpositionsQuery.map { row ->
                         val idExpoEntity = row[Exposiciones.id]
-                        val obras = Obras.select { (Obras.idExposicion eq idExpoEntity) and (Obras.idArtista eq artistId) }.toList()
+                        val obras = Obras.select { Obras.idExposicion eq idExpoEntity }.toList()
                         val obrasIds = obras.map { it[Obras.id] }
 
                         val artworks = obras.mapNotNull {
