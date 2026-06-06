@@ -49,21 +49,19 @@ val SUBTAGS_FOTOGRAFIA = listOf(
 )
 
 fun seedDatabase() {
-    val isDbEmpty = Usuarios.selectAll().empty()
-
-    if (isDbEmpty) {
-        // 1. Limpieza total si la DB está vacía
-        TagObras.deleteAll()
-        Likes.deleteAll()
-        Feeds.deleteAll()
-        Obras.deleteAll()
-        Balizas.deleteAll()
-        ArtistaExposiciones.deleteAll()
-        Exposiciones.deleteAll()
-        Tags.deleteAll()
-        Artistas.deleteAll()
-        Interesados.deleteAll()
-        Usuarios.deleteAll()
+    Mensajes.deleteAll()
+    Conversaciones.deleteAll()
+    Invitaciones.deleteAll()
+    Likes.deleteAll()
+    Feeds.deleteAll()
+    Obras.deleteAll()
+    Balizas.deleteAll()
+    ArtistaExposiciones.deleteAll()
+    Exposiciones.deleteAll()
+    Tags.deleteAll()
+    Artistas.deleteAll()
+    Interesados.deleteAll()
+    Usuarios.deleteAll()
 
         val baseUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/"
 
@@ -198,9 +196,9 @@ fun seedDatabase() {
             "Fotografía de alta exposición que revela detalles invisibles al ojo humano."
         )
 
-        val obrasPrefixes = listOf(
-            "obra_pintura1", "obra_pintura2", "obra_escultura1", "obra_escultura2", "obra_fotografia1", "obra_fotografia2", "obra_escultura2", "obra_fotografia1"
-        )
+                val obrasPrefixes = listOf(
+                    "obra_pintura1", "obra_pintura2", "obra_escultura1", "obra_escultura2", "obra_fotografia1", "obra_fotografia2", "obra_escultura2", "obra_fotografia1"
+                )
 
         for (i in 0 until 8) {
             val expoId = expoIds[i]
@@ -214,6 +212,9 @@ fun seedDatabase() {
                 else -> "Pintura" to SUBTAGS_PINTURA
             }
 
+            val obraScores = listOf(0.9, 0.55, 0.3, 0.75, 0.4, 0.85, 0.6, 0.2)
+            val obraLikes  = listOf(120L, 34L, 8L, 67L, 15L, 200L, 45L, 3L)
+
             for (j in 1..3) {
                 val obraId = Obras.insertAndGetId {
                     it[idExposicion] = expoId
@@ -224,6 +225,8 @@ fun seedDatabase() {
                     it[imgUrl] = "${baseUrl}${prefix}_${j}.jpg"
                     it[oculta] = false
                     it[precio] = if (j % 2 == 0) (j * 1400.0) else 0.0
+                    it[score] = obraScores[i] * (1.0 - j * 0.1)
+                    it[likes] = obraLikes[i] / j
                 }
 
                 // Asignar categoría
@@ -270,57 +273,57 @@ fun seedDatabase() {
                 }
             }
         }
-    } else {
-        // 2. Si ya hay datos, solo limpiar tags y regenerarlos
-        TagObras.deleteAll()
-        Tags.deleteAll()
 
-        val tagIdByName = ALL_NEW_TAGS.associateWith { name ->
-            Tags.insertAndGetId {
-                it[nombre] = name
-                it[descrip] = ""
+        // Invitación: chica_1 (Elena) invita a chica_2 (Lucía) a colaborar en "Ecos del Renacimiento"
+        Invitaciones.insert {
+            it[idExposicion] = expoIds[0]
+            it[idArtistaSender] = artist1Id
+            it[idArtistaReceiver] = artist2Id
+            it[estado] = "pendiente"
+            it[fechaCreacion] = "2026-06-05 10:00:00"
+        }
+
+        // Invitación: chica_2 (Lucía) invita a chica_1 (Elena) a colaborar en "Volúmenes Rotos"
+        Invitaciones.insert {
+            it[idExposicion] = expoIds[3]
+            it[idArtistaSender] = artist2Id
+            it[idArtistaReceiver] = artist1Id
+            it[estado] = "pendiente"
+            it[fechaCreacion] = "2026-06-05 11:00:00"
+        }
+
+        // Conversación: chica_5 (Sofía) interesada en una obra de chica_1 (Elena)
+        val chica1Id = userIds[0]
+        val chica5Id = userIds[4]
+        val obraImagenUrl = "${baseUrl}obra_pintura1_1.jpg"
+
+        val mensajes = listOf(
+            Triple(chica5Id, "¡Hola, Elena! He visto tu obra 'El Retrato del Alma' en la exposición 'Ecos del Renacimiento' y me ha dejado sin palabras. Es absolutamente preciosa. ¿Está disponible para adquisición?", obraImagenUrl),
+            Triple(chica1Id, "¡Hola, Sofía! Muchísimas gracias, me alegra enormemente que te haya llegado de esa manera. Sí, la pieza sigue disponible. ¿Te gustaría que habláramos de los detalles?", null),
+            Triple(chica5Id, "¡Me encantaría! Creo que encajaría perfectamente en el espacio que tengo en mente. ¿Podríamos quedar para verla en persona esta semana?", null),
+            Triple(chica1Id, "Claro que sí. El jueves por la tarde me va perfecto. Podemos vernos directamente en el museo. ¡Estaré encantada de mostrártela!", null)
+        )
+
+        val conversacionId = Conversaciones.insertAndGetId {
+            it[idUsuario1] = chica5Id
+            it[idUsuario2] = chica1Id
+            it[fechaUltimoMensaje] = "2026-06-05 18:00:00"
+        }.value
+
+        mensajes.forEachIndexed { i, (senderId, contenido, urlImagen) ->
+            val hora = "2026-06-05 ${17 + i}:${if (i == 0) "30" else "0$i"}:00"
+            Mensajes.insert {
+                it[idConversacion] = conversacionId
+                it[idSender] = senderId
+                it[Mensajes.contenido] = contenido
+                it[urlImagenObra] = urlImagen
+                it[fechaCreacion] = hora
             }
         }
 
-        // Asociar nuevos tags a todas las obras existentes
-        val existingObras = Obras.selectAll().toList()
-        existingObras.forEach { row ->
-            val obraId = row[Obras.id]
-            val imgUrl = row[Obras.imgUrl] ?: ""
-
-            val (category, subTagsList) = when {
-                imgUrl.contains("pintura", ignoreCase = true) -> "Pintura" to SUBTAGS_PINTURA
-                imgUrl.contains("escultura", ignoreCase = true) -> "Escultura" to SUBTAGS_ESCULTURA
-                imgUrl.contains("fotografia", ignoreCase = true) || imgUrl.contains("foto", ignoreCase = true) || imgUrl.contains("madrid", ignoreCase = true) -> "Fotografía" to SUBTAGS_FOTOGRAFIA
-                else -> "Pintura" to SUBTAGS_PINTURA
-            }
-
-            // Asignar categoría
-            tagIdByName[category]?.let { tagId ->
-                TagObras.insert {
-                    it[idTag] = tagId
-                    it[idObra] = obraId
-                }
-            }
-
-            // Asignar 3 sub-tags aleatorios
-            val chosen = subTagsList.shuffled().take(3)
-            chosen.forEach { tagNombre ->
-                if (tagNombre != category) {
-                    tagIdByName[tagNombre]?.let { tagId ->
-                        try {
-                            TagObras.insert {
-                                it[idTag] = tagId
-                                it[idObra] = obraId
-                            }
-                        } catch (e: Exception) {
-                            // Ignorar duplicados
-                        }
-                    }
-                }
-            }
+        Conversaciones.update({ Conversaciones.id eq conversacionId }) {
+            it[fechaUltimoMensaje] = "2026-06-05 20:03:00"
         }
-    }
 }
 
 fun Route.seedRoutes() {

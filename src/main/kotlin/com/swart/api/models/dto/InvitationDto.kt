@@ -20,6 +20,13 @@ data class RespondInvitationRequest(
 )
 
 @Serializable
+data class CreateInvitationRequest(
+    val idExposicion: Long,
+    val idArtistaSender: Long,
+    val idArtistaReceiver: Long
+)
+
+@Serializable
 data class MutualArtistDto(
     val id: Long,
     val nombre: String,

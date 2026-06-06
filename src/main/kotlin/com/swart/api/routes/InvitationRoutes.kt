@@ -10,6 +10,8 @@ import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 fun Route.invitationRoutes() {
 
@@ -49,6 +51,29 @@ fun Route.invitationRoutes() {
             }
 
             call.respond(invitations)
+        }
+    }
+
+    // POST /api/invitations → crear una invitación
+    route("/api/invitations") {
+        post {
+            val req = try {
+                call.receive<CreateInvitationRequest>()
+            } catch (e: Exception) {
+                return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Datos inválidos"))
+            }
+
+            val id = transaction {
+                Invitaciones.insertAndGetId {
+                    it[idExposicion] = req.idExposicion
+                    it[idArtistaSender] = req.idArtistaSender
+                    it[idArtistaReceiver] = req.idArtistaReceiver
+                    it[estado] = "pendiente"
+                    it[fechaCreacion] = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                }.value
+            }
+
+            call.respond(HttpStatusCode.Created, mapOf("idInvitacion" to id))
         }
     }
 

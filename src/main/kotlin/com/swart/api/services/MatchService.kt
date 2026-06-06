@@ -11,7 +11,31 @@ import kotlin.random.Random
 
 object MatchService {
 
+    /**
+     * Ensures the user has a record in the Interesados table.
+     * This is required because Feeds, Likes, and InteresadoTagPreferences
+     * all have foreign keys referencing Interesados.
+     * If the user is only registered as Artista (or has no role sub-table entry),
+     * swipe recording silently fails due to FK violations.
+     */
+    private fun org.jetbrains.exposed.sql.Transaction.ensureInteresadoExists(userId: Long) {
+        val exists = Interesados.select { Interesados.id eq userId }.empty().not()
+        if (!exists) {
+            // Verify user exists in Usuarios first
+            val userExists = Usuarios.select { Usuarios.id eq userId }.empty().not()
+            if (userExists) {
+                exec("INSERT INTO \"Interesado\" (\"idInteresado\") VALUES ($userId)")
+                println("MatchService: Created Interesado record for userId=$userId")
+            } else {
+                println("MatchService: WARNING - userId=$userId does not exist in Usuarios!")
+            }
+        }
+    }
+
     fun getDiscoverFeed(userId: Long): List<DiscoverArtworkDto> = transaction {
+        // 0. Ensure the user has an Interesado record so FK queries work
+        ensureInteresadoExists(userId)
+
         // 1. Obtener los tags preferidos del usuario y sus pesos
         val userPrefs = InteresadoTagPreferences
             .select { InteresadoTagPreferences.idInteresado eq userId }
@@ -20,18 +44,26 @@ object MatchService {
         val totalUserLikes = Likes.select { Likes.idInteresado eq userId }.count()
         val maxUserWeight = userPrefs.values.maxOrNull() ?: 0.0
 
+        println("MatchService: getDiscoverFeed userId=$userId, prefs=${userPrefs.size} tags, totalLikes=$totalUserLikes, maxWeight=$maxUserWeight")
+
         // 2. Obtener obras ya vistas por el usuario
         val seenArtworkIds = Feeds
             .select { Feeds.idInteresado eq userId }
             .map { it[Feeds.idObra].value }
             .toSet()
 
+        println("MatchService: seenArtworkIds=${seenArtworkIds.size} obras ya vistas")
+
         // 3. Obtener obras no vistas (join con Exposicion, Artista, y pre-cargar tags)
         val maxGlobalLikes = Obras.selectAll().maxOfOrNull { it[Obras.likes] }?.coerceAtLeast(1L) ?: 1L
 
-        val availableArtworks = (Obras innerJoin Exposiciones)
-            .select { Obras.id notInList seenArtworkIds }
-            .map { row ->
+        val availableArtworksQuery = if (seenArtworkIds.isEmpty()) {
+            (Obras innerJoin Exposiciones).selectAll()
+        } else {
+            (Obras innerJoin Exposiciones).select { Obras.id notInList seenArtworkIds }
+        }
+
+        val availableArtworks = availableArtworksQuery.map { row ->
                 val obraId = row[Obras.id].value
                 val expoId = row[Exposiciones.id].value
                 val tagsOfObra = TagObras
@@ -51,6 +83,7 @@ object MatchService {
                     titulo = row[Obras.titulo] ?: "Sin título",
                     imgUrl = row[Obras.imgUrl] ?: "",
                     likes = row[Obras.likes],
+                    score = row[Obras.score] ?: 0.0,
                     tags = tagsOfObra,
                     exhibitionId = expoId,
                     exhibitionTitle = row[Exposiciones.titulo],
@@ -60,6 +93,8 @@ object MatchService {
                     artistAvatar = artistAvatar
                 )
             }
+
+        println("MatchService: availableArtworks=${availableArtworks.size} obras no vistas")
 
         // 4. Calcular scores para cada obra
         val scoredArtworks = availableArtworks.map { artwork ->
@@ -82,11 +117,18 @@ object MatchService {
                 if (novelty > maxNovedad) maxNovedad = novelty
             }
 
-            val exploitationScorePercent = if (maxUserWeight > 0.0) {
+            val baseScore = if (maxUserWeight > 0.0) {
                 50.0 + 50.0 * (sumNormalizedWeights / tagsCount)
             } else {
-                70.0 + 10.0 * (artwork.likes.toDouble() / maxGlobalLikes)
+                val popularityFactor = artwork.likes.toDouble() / maxGlobalLikes
+                val globalScore = artwork.score.coerceIn(0.0, 1.0)
+                // Per-artwork noise so cold-start scores spread even when DB signals are zero
+                val coldNoise = Random.nextDouble(0.0, 20.0)
+                (45.0 + 25.0 * globalScore + 15.0 * popularityFactor + coldNoise).coerceIn(0.0, 100.0)
             }
+            // Jitter ±8% so scores feel alive on every load and vary which artworks surface
+            val jitter = (Random.nextDouble() - 0.5) * 16.0
+            val exploitationScorePercent = (baseScore + jitter).coerceIn(0.0, 100.0)
 
             val bridgeScore = (maxFamiliaridad * maxNovedad) + 0.1 * (sumNovelty / tagsCount)
             val explorationScore = bridgeScore + 0.1 * (artwork.likes.toDouble() / maxGlobalLikes)
@@ -107,7 +149,7 @@ object MatchService {
         val result = mutableListOf<DiscoverArtworkDto>()
         val selectedIds = mutableSetOf<Long>()
 
-        val limit = minOf(20, scoredArtworks.size)
+        val limit = minOf(5, scoredArtworks.size)
         while (result.size < limit && (exploitationPool.isNotEmpty() || explorationPool.isNotEmpty())) {
             val explore = Random.nextDouble() < epsilon
             
@@ -133,7 +175,12 @@ object MatchService {
                         idObra = chosenScored.artwork.idObra,
                         titulo = chosenScored.artwork.titulo,
                         imgUrl = chosenScored.artwork.imgUrl,
-                        matchScore = chosenScored.exploitationScore,
+                        matchScore = if (chosenScored.isExploration) {
+                            // Normalize explorationScore (0..~1) to percentage (30..70%)
+                            30.0 + (chosenScored.explorationScore.coerceIn(0.0, 1.0) * 40.0)
+                        } else {
+                            chosenScored.exploitationScore
+                        },
                         isExploration = chosenScored.isExploration,
                         exhibitionId = chosenScored.artwork.exhibitionId,
                         exhibitionTitle = chosenScored.artwork.exhibitionTitle,
@@ -146,10 +193,16 @@ object MatchService {
             }
         }
 
+        println("MatchService: Returning ${result.size} artworks for userId=$userId (epsilon=${"%.2f".format(epsilon)})")
         result
     }
 
     fun recordSwipe(userId: Long, obraId: Long, liked: Boolean, matchScore: Double) = transaction {
+        // 0. Ensure the user has an Interesado record so FK inserts work
+        ensureInteresadoExists(userId)
+
+        println("MatchService: recordSwipe userId=$userId, obraId=$obraId, liked=$liked, matchScore=$matchScore")
+
         // 1. Guardar en Feeds (historial de vistos)
         val exists = Feeds.select { (Feeds.idInteresado eq userId) and (Feeds.idObra eq obraId) }.empty().not()
         if (!exists) {
@@ -159,6 +212,9 @@ object MatchService {
                 it[fechaInteraccion] = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 it[this.matchScore] = matchScore
             }
+            println("MatchService: Feed record inserted for obra $obraId")
+        } else {
+            println("MatchService: Feed record already exists for obra $obraId")
         }
 
         // 2. Si es Like, guardar en Likes y actualizar pesos de tags
@@ -171,6 +227,7 @@ object MatchService {
                 }
                 
                 val tagsOfObra = TagObras.select { TagObras.idObra eq obraId }.map { it[TagObras.idTag].value }
+                println("MatchService: Like recorded. Updating weights for ${tagsOfObra.size} tags")
                 for (tagId in tagsOfObra) {
                     val prefRow = InteresadoTagPreferences.select {
                         (InteresadoTagPreferences.idInteresado eq userId) and (InteresadoTagPreferences.idTag eq tagId)
@@ -200,6 +257,7 @@ object MatchService {
         val titulo: String,
         val imgUrl: String,
         val likes: Long,
+        val score: Double,
         val tags: List<Long>,
         val exhibitionId: Long,
         val exhibitionTitle: String,

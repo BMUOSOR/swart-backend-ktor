@@ -35,7 +35,7 @@ fun Application.configureDatabases() {
         println("Iniciando fallback local: base de datos H2 en memoria...")
         isPostgres = false
         val h2Config = HikariConfig().apply {
-            jdbcUrl = "jdbc:h2:mem:swart;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDER=HIGH"
+            jdbcUrl = "jdbc:h2:file:./swart_local_db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDER=HIGH"
             username = "sa"
             password = ""
             driverClassName = "org.h2.Driver"
