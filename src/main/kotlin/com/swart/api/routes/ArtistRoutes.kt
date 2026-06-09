@@ -97,6 +97,10 @@ fun Route.artistRoutes() {
                             emptyList()
                         }
 
+                        val favoritosCount = if (obrasIds.isNotEmpty()) {
+                            Likes.select { Likes.idObra inList obrasIds }.count().toInt()
+                        } else 0
+
                         ExhibitionFeedDTO(
                             idExposicion = idExpoEntity.value,
                             idArtista = artistId,
@@ -115,7 +119,9 @@ fun Route.artistRoutes() {
                             nombreLugar = row[Exposiciones.nombreLugar],
                             ubicacion = row[Exposiciones.ubicacion],
                             precio = row[Exposiciones.precio],
-                            score = row[Exposiciones.score]
+                            score = row[Exposiciones.score],
+                            visitantes = row[Exposiciones.visitantes],
+                            favoritosCount = favoritosCount
                         )
                     }
 
@@ -155,6 +161,37 @@ fun Route.artistRoutes() {
                 call.respond(HttpStatusCode.NotFound, "Artista no encontrado")
             } else {
                 call.respond(artistProfile)
+            }
+        }
+
+        // PATCH /api/artists/{id}  → actualizar perfil (bio, redes sociales)
+        patch {
+            val artistId = call.parameters["id"]?.toLongOrNull()
+            if (artistId == null) {
+                call.respond(HttpStatusCode.BadRequest, "ID de artista inválido")
+                return@patch
+            }
+
+            val req = try {
+                call.receive<UpdateArtistProfileRequest>()
+            } catch (e: Exception) {
+                call.respond(HttpStatusCode.BadRequest, "Cuerpo de petición inválido")
+                return@patch
+            }
+
+            val updated = transaction {
+                Artistas.update({ Artistas.id eq artistId }) {
+                    req.bio?.let       { v -> it[bio]       = v.ifBlank { null } }
+                    req.instagram?.let { v -> it[instagram] = v.ifBlank { null } }
+                    req.twitter?.let   { v -> it[x]         = v.ifBlank { null } }
+                    req.correo?.let    { v -> it[correo]    = v.ifBlank { null } }
+                }
+            }
+
+            if (updated > 0) {
+                call.respond(HttpStatusCode.OK, mapOf("success" to true))
+            } else {
+                call.respond(HttpStatusCode.NotFound, mapOf("success" to false))
             }
         }
 

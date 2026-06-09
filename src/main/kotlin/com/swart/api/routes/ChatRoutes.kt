@@ -41,22 +41,22 @@ fun Route.chatRoutes() {
                     }.value
                 }
 
-                // Insertar mensaje inicial
-                val nowStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                val msgId = Mensajes.insertAndGetId {
-                    it[idConversacion] = chatId
-                    it[idSender] = req.senderId
-                    it[contenido] = req.initialMessage
-                    it[urlImagenObra] = req.urlImagenObra
-                    it[fechaCreacion] = nowStr
-                }.value
-
-                // Actualizar fecha de último mensaje
-                Conversaciones.update({ Conversaciones.id eq chatId }) {
-                    it[fechaUltimoMensaje] = nowStr
+                // Insertar mensaje inicial solo si se proporcionó
+                if (!req.initialMessage.isNullOrBlank()) {
+                    val nowStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    Mensajes.insertAndGetId {
+                        it[idConversacion] = chatId
+                        it[idSender] = req.senderId
+                        it[contenido] = req.initialMessage
+                        it[urlImagenObra] = req.urlImagenObra
+                        it[fechaCreacion] = nowStr
+                    }
+                    Conversaciones.update({ Conversaciones.id eq chatId }) {
+                        it[fechaUltimoMensaje] = nowStr
+                    }
                 }
 
-                mapOf("idConversacion" to chatId, "idMensaje" to msgId)
+                mapOf("idConversacion" to chatId)
             }
 
             call.respond(HttpStatusCode.Created, result)

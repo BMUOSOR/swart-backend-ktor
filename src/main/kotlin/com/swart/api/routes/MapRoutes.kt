@@ -4,11 +4,20 @@ import com.swart.api.models.*
 import com.swart.api.models.dto.MapPinDto
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.random.Random
+
+@Serializable
+data class EmptyBalizaRequest(val lat: Double, val lon: Double)
+
+@Serializable
+data class EmptyBalizaDto(val id: Long, val lat: Double, val lon: Double)
 
 fun Route.mapRoutes() {
     route("/api/map") {
@@ -22,17 +31,19 @@ fun Route.mapRoutes() {
                     query.map { row ->
                         val idExp = row[Exposiciones.id].value
                         
-                        // Subquery to find the most frequent tag for this exhibition
-                        // Join Obras -> TagObras -> Tags
+                        // 1. Categoría directa de la exposición (establecida al crear)
+                        val categoriaExpo = row[Exposiciones.categoria]?.lowercase()?.trim()
+
+                        // 2. Tags de las obras como fallback
                         val tagsQuery = (Obras innerJoin TagObras innerJoin Tags)
                             .select { Obras.idExposicion eq idExp }
                             .map { it[Tags.nombre].lowercase() }
-                        
-                        // Filter for only the allowed tags and count frequencies
-                        // Determine the main tag based on keywords
+
+                        // Prioridad: categoría propia > tags de obras > "pintura" por defecto
                         val mainTag = when {
-                            tagsQuery.any { it.contains("escultura") } -> "escultura"
-                            tagsQuery.any { it.contains("fotografía") } -> "fotografía"
+                            categoriaExpo == "escultura" || tagsQuery.any { it.contains("escultura") } -> "escultura"
+                            categoriaExpo == "fotografía" || categoriaExpo == "fotografia" ||
+                                tagsQuery.any { it.contains("fotografía") || it.contains("fotografia") } -> "fotografía"
                             else -> "pintura"
                         }
                         
@@ -65,6 +76,67 @@ fun Route.mapRoutes() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Error fetching map pins: ${e.message}"))
+            }
+        }
+
+        // Empty balizas
+        get("/balizas-vacias") {
+            try {
+                val list = transaction {
+                    BalizasVacias.selectAll().map { row ->
+                        EmptyBalizaDto(
+                            id  = row[BalizasVacias.id].value,
+                            lat = row[BalizasVacias.lat],
+                            lon = row[BalizasVacias.lon]
+                        )
+                    }
+                }
+                call.respond(HttpStatusCode.OK, list)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        post("/baliza-vacia") {
+            try {
+                val req = call.receive<EmptyBalizaRequest>()
+                val newId = transaction {
+                    BalizasVacias.insertAndGetId {
+                        it[lat] = req.lat
+                        it[lon] = req.lon
+                    }.value
+                }
+                call.respond(HttpStatusCode.Created, EmptyBalizaDto(id = newId, lat = req.lat, lon = req.lon))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        delete("/baliza-vacia/{id}") {
+            try {
+                val balizaId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                transaction { BalizasVacias.deleteWhere { BalizasVacias.id eq balizaId } }
+                call.respond(HttpStatusCode.OK, mapOf("success" to true))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        get("/reverse-geocode") {
+            val lat = call.request.queryParameters["lat"]?.toDoubleOrNull()
+            val lon = call.request.queryParameters["lon"]?.toDoubleOrNull()
+            if (lat == null || lon == null) {
+                return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "lat/lon requeridos"))
+            }
+            val result = com.swart.api.services.GeocodingService.reverseGeocode(lat, lon)
+            if (result == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "No se pudo geolocalizar"))
+            } else {
+                call.respond(HttpStatusCode.OK, result)
             }
         }
 

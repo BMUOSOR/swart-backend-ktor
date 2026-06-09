@@ -52,15 +52,24 @@ object MatchService {
             .map { it[Feeds.idObra].value }
             .toSet()
 
-        println("MatchService: seenArtworkIds=${seenArtworkIds.size} obras ya vistas")
+        // Garantía adicional: nunca mostrar obras que el usuario ya haya dado like,
+        // aunque por algún motivo no tengan entrada en Feeds
+        val likedArtworkIds = Likes
+            .select { Likes.idInteresado eq userId }
+            .map { it[Likes.idObra].value }
+            .toSet()
 
-        // 3. Obtener obras no vistas (join con Exposicion, Artista, y pre-cargar tags)
+        val excludedIds = seenArtworkIds + likedArtworkIds
+
+        println("MatchService: seenArtworkIds=${seenArtworkIds.size}, likedIds=${likedArtworkIds.size}, totalExcluded=${excludedIds.size}")
+
+        // 3. Obtener obras no vistas ni gustadas (join con Exposicion, Artista, y pre-cargar tags)
         val maxGlobalLikes = Obras.selectAll().maxOfOrNull { it[Obras.likes] }?.coerceAtLeast(1L) ?: 1L
 
-        val availableArtworksQuery = if (seenArtworkIds.isEmpty()) {
+        val availableArtworksQuery = if (excludedIds.isEmpty()) {
             (Obras innerJoin Exposiciones).selectAll()
         } else {
-            (Obras innerJoin Exposiciones).select { Obras.id notInList seenArtworkIds }
+            (Obras innerJoin Exposiciones).select { Obras.id notInList excludedIds }
         }
 
         val availableArtworks = availableArtworksQuery.map { row ->
@@ -223,7 +232,8 @@ object MatchService {
             if (!likeExists) {
                 Likes.insert {
                     it[idInteresado] = userId
-                    it[idObra] = obraId
+                    it[idObra]       = obraId
+                    it[fechaLike]    = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 }
                 
                 val tagsOfObra = TagObras.select { TagObras.idObra eq obraId }.map { it[TagObras.idTag].value }
@@ -250,6 +260,55 @@ object MatchService {
                 }
             }
         }
+    }
+
+    fun getLikedArtworks(userId: Long): List<DiscoverArtworkDto> = transaction {
+        // Paso 1: obtener idObra + fecha, ordenados del más reciente al más antiguo
+        val likedRows = Likes
+            .select { Likes.idInteresado eq userId }
+            .orderBy(Likes.fechaLike, SortOrder.DESC_NULLS_LAST)
+
+        val likedObraIds = likedRows.map { it[Likes.idObra].value }
+        // Mapa para recuperar la fecha y restaurar el orden tras el segundo join
+        val fechaPorObra = likedRows.associate {
+            it[Likes.idObra].value to it[Likes.fechaLike]
+        }
+
+        if (likedObraIds.isEmpty()) return@transaction emptyList()
+
+        // Paso 2: cargar datos de obra + exposición y reordenar por fecha de like
+        (Obras innerJoin Exposiciones)
+            .select { Obras.id inList likedObraIds }
+            .map { row ->
+                val obraId  = row[Obras.id].value
+                val expoId  = row[Exposiciones.id].value
+
+                val artistRow = (ArtistaExposiciones innerJoin Artistas innerJoin Usuarios)
+                    .select { ArtistaExposiciones.idExposicion eq expoId }
+                    .firstOrNull()
+
+                val artistId     = artistRow?.get(Artistas.id)?.value ?: 0L
+                val artistName   = artistRow?.let { "${it[Usuarios.nombre]} ${it[Usuarios.apellidos] ?: ""}".trim() } ?: "Unknown"
+                val artistAvatar = artistRow?.get(Usuarios.imgUrl) ?: ""
+
+                DiscoverArtworkDto(
+                    idObra          = obraId,
+                    titulo          = row[Obras.titulo] ?: "Sin título",
+                    imgUrl          = row[Obras.imgUrl] ?: "",
+                    matchScore      = 100.0,
+                    isExploration   = false,
+                    exhibitionId    = expoId,
+                    exhibitionTitle = row[Exposiciones.titulo],
+                    nombreLugar     = row[Exposiciones.nombreLugar],
+                    ubicacion       = row[Exposiciones.ubicacion],
+                    artistName      = artistName,
+                    artistAvatar    = artistAvatar,
+                    artistId        = artistId
+                )
+            }
+            // Restaurar el orden cronológico inverso (más reciente primero)
+            // El SELECT con inList no garantiza orden, así que lo aplicamos aquí
+            .sortedByDescending { dto -> fechaPorObra[dto.idObra] }
     }
 
     private data class ArtworkData(

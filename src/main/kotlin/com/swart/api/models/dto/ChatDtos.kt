@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class StartChatRequest(
     val senderId: Long,
     val receiverId: Long,
-    val initialMessage: String,
+    val initialMessage: String? = null,
     val urlImagenObra: String? = null
 )
 

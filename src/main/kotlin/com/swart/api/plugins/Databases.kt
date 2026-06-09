@@ -55,7 +55,9 @@ fun Application.configureDatabases() {
                 exec("DROP TABLE IF EXISTS \"Feed\" CASCADE;")
                 exec("DROP TABLE IF EXISTS \"InteresadoTagPreference\" CASCADE;")
                 exec("ALTER TABLE \"Exposicion\" ADD COLUMN IF NOT EXISTS \"es_colaborativa\" BOOLEAN DEFAULT FALSE;")
+                exec("ALTER TABLE \"Exposicion\" ADD COLUMN IF NOT EXISTS \"categoria\" TEXT DEFAULT NULL;")
                 exec("ALTER TABLE \"Obra\" ADD COLUMN IF NOT EXISTS \"idArtista\" BIGINT REFERENCES \"Artista\"(\"idArtista\") ON DELETE CASCADE;")
+                exec("ALTER TABLE \"Like\" ADD COLUMN IF NOT EXISTS \"fecha_like\" TIMESTAMP DEFAULT NOW();")
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -66,6 +68,7 @@ fun Application.configureDatabases() {
             Artistas,
             Exposiciones,
             Balizas,
+            BalizasVacias,
             Obras,
             Tags,
             TagObras,

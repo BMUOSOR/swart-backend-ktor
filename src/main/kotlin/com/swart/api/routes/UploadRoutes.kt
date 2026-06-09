@@ -43,23 +43,27 @@ fun Route.uploadRoutes() {
 
             // Upload to Supabase Storage
             val supabaseUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/Imagenes/$fileName"
-            val supabaseKey = System.getenv("SUPABASE_KEY") ?: System.getenv("SUPABASE_ANON_KEY")
+            val supabaseKey = System.getenv("SUPABASE_KEY")
+                ?: System.getenv("SUPABASE_ANON_KEY")
 
             try {
                 val response = client.put(supabaseUrl) {
                     setBody(fileBytes!!)
                     header(HttpHeaders.ContentType, contentType!!)
-                    if (!supabaseKey.isNullOrEmpty()) {
-                        header("Authorization", "Bearer $supabaseKey")
-                    }
+                    header("Authorization", "Bearer $supabaseKey")
+                    header("apikey", supabaseKey)
                 }
 
                 if (response.status.isSuccess()) {
                     val publicUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/$fileName"
                     call.respond(HttpStatusCode.OK, mapOf("url" to publicUrl))
                 } else {
-                    println("Supabase upload failed: ${response.status} - ${response.bodyAsText()}")
-                    call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to upload to Supabase: ${response.status}"))
+                    val body = response.bodyAsText()
+                    println("Supabase upload failed: ${response.status} - $body")
+                    call.respond(
+                        HttpStatusCode.InternalServerError,
+                        mapOf("error" to "Supabase error ${response.status.value}: $body")
+                    )
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

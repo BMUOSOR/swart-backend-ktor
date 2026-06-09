@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 import com.swart.api.services.GeocodingService
+import com.swart.api.models.Balizas
 import com.swart.api.models.Invitaciones
 import com.swart.api.models.dto.CreateExhibitionRequest
 import com.swart.api.models.dto.CreateArtworkRequest
@@ -100,12 +101,30 @@ fun Route.exhibitionRoutes() {
                 return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Datos inválidos"))
             }
 
+            // Resolver coordenadas ANTES de la transacción (suspend call)
+            val resolvedLat: Double?
+            val resolvedLon: Double?
+            if (req.lat != null && req.lon != null) {
+                // Coordenadas directas (desde baliza vacía)
+                resolvedLat = req.lat
+                resolvedLon = req.lon
+            } else if (!req.ubicacion.isNullOrBlank()) {
+                // Geocodificar la dirección escrita
+                val geoResult = runCatching { GeocodingService.verifyAddress(req.ubicacion) }.getOrNull()
+                resolvedLat = geoResult?.lat?.toDoubleOrNull()
+                resolvedLon = geoResult?.lon?.toDoubleOrNull()
+            } else {
+                resolvedLat = null
+                resolvedLon = null
+            }
+
             val newId = transaction {
                 val idExpo = Exposiciones.insertAndGetId {
                     it[titulo] = req.titulo
                     it[descrip] = req.descrip
                     it[nombreLugar] = req.nombreLugar
                     it[ubicacion] = req.ubicacion
+                    it[categoria] = req.categoria
                     it[fechaInicio] = req.fechaInicio
                     it[fechaFin] = req.fechaFin
                     it[imgUrl] = req.imgUrl
@@ -120,6 +139,15 @@ fun Route.exhibitionRoutes() {
                 ArtistaExposiciones.insert {
                     it[idArtista] = req.artistaId
                     it[idExposicion] = idExpo
+                }
+
+                // Crear entrada en Balizas para que aparezca en el mapa
+                if (resolvedLat != null && resolvedLon != null) {
+                    Balizas.insert {
+                        it[id] = idExpo
+                        it[lat] = resolvedLat
+                        it[lon] = resolvedLon
+                    }
                 }
 
                 // Si colaborativa, enviar invitaciones
@@ -340,6 +368,23 @@ fun Route.exhibitionRoutes() {
                 call.respond(HttpStatusCode.OK, mapOf("success" to true))
             } else {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "Exposición no encontrada"))
+            }
+        }
+
+        // POST /api/exhibitions/{id}/view → incrementa el contador de visitantes
+        route("{id}/view") {
+            post {
+                val id = call.parameters["id"]?.toLongOrNull()
+                    ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+
+                transaction {
+                    Exposiciones.update({ Exposiciones.id eq id }) {
+                        with(SqlExpressionBuilder) {
+                            it.update(Exposiciones.visitantes, Exposiciones.visitantes + 1)
+                        }
+                    }
+                }
+                call.respond(HttpStatusCode.OK, mapOf("success" to true))
             }
         }
     }

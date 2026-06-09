@@ -10,6 +10,7 @@ import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 
 fun Route.authRoutes() {
     route("/api/auth") {
@@ -153,6 +154,21 @@ fun Route.authRoutes() {
     route("/api/users") {
         put("/{id}/preferences") {
             call.respondText("Update preferences endpoint")
+        }
+
+        put("/{id}/avatar") {
+            val userId = call.parameters["id"]?.toLongOrNull()
+                ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+            val body = call.receive<Map<String, String>>()
+            val newUrl = body["imgUrl"]
+                ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "imgUrl requerido"))
+
+            transaction {
+                Usuarios.update({ Usuarios.id eq userId }) {
+                    it[imgUrl] = newUrl
+                }
+            }
+            call.respond(HttpStatusCode.OK, mapOf("imgUrl" to newUrl))
         }
     }
 }

@@ -28,6 +28,21 @@ object GeocodingService {
         }
     }
 
+    suspend fun reverseGeocode(lat: Double, lon: Double): NominatimResult? {
+        return try {
+            val response: HttpResponse = client.get("https://nominatim.openstreetmap.org/reverse") {
+                parameter("lat", lat.toString())
+                parameter("lon", lon.toString())
+                parameter("format", "json")
+                headers { append(HttpHeaders.UserAgent, "SwartApp/1.0 (antigravity)") }
+            }
+            if (response.status.isSuccess()) response.body<NominatimResult>() else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     suspend fun verifyAddress(address: String): NominatimResult? {
         if (address.isBlank()) return null
         return try {

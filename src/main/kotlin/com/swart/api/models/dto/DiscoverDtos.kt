@@ -14,7 +14,8 @@ data class DiscoverArtworkDto(
     val nombreLugar: String?,
     val ubicacion: String?,
     val artistName: String,
-    val artistAvatar: String
+    val artistAvatar: String,
+    val artistId: Long = 0L
 )
 
 @Serializable

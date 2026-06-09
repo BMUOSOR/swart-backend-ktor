@@ -17,6 +17,7 @@ object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val fechaFin = pgDate("\"fecha_fin\"").nullable()
     val nombreLugar = text("\"nombre_lugar\"").nullable()
     val esColaborativa = bool("\"es_colaborativa\"").default(false)
+    val categoria = text("\"categoria\"").nullable()
 }
 
 object ArtistaExposiciones : org.jetbrains.exposed.sql.Table("\"ArtistaExposicion\"") {
