@@ -45,6 +45,10 @@ fun Route.uploadRoutes() {
             val supabaseUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/Imagenes/$fileName"
             val supabaseKey = System.getenv("SUPABASE_KEY")
                 ?: System.getenv("SUPABASE_ANON_KEY")
+                ?: return@post call.respond(
+                    HttpStatusCode.InternalServerError,
+                    mapOf("error" to "SUPABASE_KEY env var not set")
+                )
 
             try {
                 val response = client.put(supabaseUrl) {
