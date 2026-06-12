@@ -48,6 +48,7 @@ val SUBTAGS_FOTOGRAFIA = listOf(
     "identidad", "cuerpo", "memoria", "familia", "ciudad", "paisaje", "arquitectura", "vida cotidiana", "trabajo", "política", "conflicto", "migración", "naturaleza", "intimidad", "tiempo", "archivo", "comunidad"
 )
 
+<<<<<<< HEAD
 fun seedDatabase() {
     Mensajes.deleteAll()
     Conversaciones.deleteAll()
@@ -62,6 +63,24 @@ fun seedDatabase() {
     Artistas.deleteAll()
     Interesados.deleteAll()
     Usuarios.deleteAll()
+=======
+fun seedDatabase(force: Boolean = false) {
+    val isDbEmpty = Usuarios.selectAll().empty() || force
+
+    if (isDbEmpty) {
+        // 1. Limpieza total si la DB está vacía
+        TagObras.deleteAll()
+        Likes.deleteAll()
+        Feeds.deleteAll()
+        Obras.deleteAll()
+        Balizas.deleteAll()
+        ArtistaExposiciones.deleteAll()
+        Exposiciones.deleteAll()
+        Tags.deleteAll()
+        Artistas.deleteAll()
+        Interesados.deleteAll()
+        Usuarios.deleteAll()
+>>>>>>> 99e5185 (feat: add /update-locations endpoint to patch baliza coords to Valencia)
 
         val baseUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/"
 
@@ -141,7 +160,18 @@ fun seedDatabase() {
             Triple("Luz en Plata", "Retrospectiva fotográfica documentando la esencia pura de la realidad. Instantes irrepetibles bañados en el romanticismo del blanco y negro.", artist2Id),
             Triple("Lentes del Mañana", "Composiciones vanguardistas y visiones digitales que reescriben las reglas de la narrativa visual contemporánea urbana.", artist2Id),
             Triple("Bronce Inmortal", "Colección de esculturas en bronce que exploran la resistencia y la forma en el espacio público.", artist2Id),
-            Triple("Madrid Nocturno", "Capturas atmosféricas de la capital bajo las luces de neón y las sombras de la noche.", artist1Id)
+            Triple("Valencia Nocturna", "Capturas atmosféricas de la capital bajo las luces de neón y las sombras de la noche.", artist1Id)
+        )
+
+        val valenciaPlaces = listOf(
+            "IVAM (Instituto Valenciano de Arte Moderno)" to "Calle de Guillem de Castro, 118, 46003 Valencia, España",
+            "Museo de Bellas Artes de Valencia" to "Calle de San Pío V, 9, 46010 Valencia, España",
+            "Museo de las Ciencias Príncipe Felipe" to "Avenida del Profesor López Piñero, 7, 46013 Valencia, España",
+            "Palacio del Marqués de Dos Aguas" to "Calle del Poeta Querol, 2, 46002 Valencia, España",
+            "La Lonja de la Seda de Valencia" to "Calle de la Lonja, 2, 46001 Valencia, España",
+            "Centro del Carmen de Cultura Contemporánea" to "Calle del Museo, 2, 46003 Valencia, España",
+            "Fundación Bancaja Valencia" to "Plaza de Tetuán, 23, 46003 Valencia, España",
+            "Bombas Gens Centre d'Art" to "Avenida de Burjassot, 54, 46009 Valencia, España"
         )
 
         val expoIds = expoData.mapIndexed { i, data ->
@@ -153,8 +183,8 @@ fun seedDatabase() {
                 it[score] = 4.8
                 it[fechaInicio] = "2026-09-02"
                 it[fechaFin] = "2026-10-02"
-                it[nombreLugar] = "Museo Nacional de Arte Contemporáneo"
-                it[ubicacion] = "Calle de las Artes, 45, 28014 Madrid, España"
+                it[nombreLugar] = valenciaPlaces[i].first
+                it[ubicacion] = valenciaPlaces[i].second
                 it[precio] = 12.0
             }
 
@@ -182,7 +212,7 @@ fun seedDatabase() {
             listOf("Mirada de 1920", "Sombras en la Calle", "Reflejos de París"),
             listOf("Ciudad Ciberpunk", "Perspectiva Invertida", "Contraste Urbano"),
             listOf("Gigante Dormido", "El Abrazo del Metal", "Formas en el Aire"),
-            listOf("Cielo de Madrid", "Luces de Gran Vía", "Silencio Urbano")
+            listOf("Cielo de Valencia", "Luces de Colón", "Silencio Urbano")
         )
 
         val obrasDescripciones = listOf(
@@ -252,24 +282,24 @@ fun seedDatabase() {
             }
         }
 
-        // Balizas
-        val madridCoords = listOf(
-            40.4168 to -3.7038,
-            40.4137 to -3.6921,
-            40.4087 to -3.6945,
-            40.4160 to -3.6949,
-            40.4241 to -3.7118,
-            40.4221 to -3.6924,
-            40.4150 to -3.6840,
-            40.4200 to -3.7030
+        // Balizas (Valencia coords)
+        val valenciaCoords = listOf(
+            39.4699 to -0.3763, // Plaza del Ayuntamiento
+            39.4746 to -0.3752, // Catedral de Valencia / El Miguelete
+            39.4626 to -0.3456, // Ciudad de las Artes y las Ciencias
+            39.4789 to -0.3789, // Torres de Serranos
+            39.4735 to -0.3846, // Mercado Central / Lonja de la Seda
+            39.4589 to -0.3765, // Parque Central
+            39.4820 to -0.3540, // Estadio de Mestalla
+            39.4682 to -0.3685  // Estación del Norte
         )
 
         expoIds.forEachIndexed { i, expoId ->
-            if (i < madridCoords.size) {
+            if (i < valenciaCoords.size) {
                 Balizas.insert {
                     it[id] = expoId
-                    it[lat] = madridCoords[i].first
-                    it[lon] = madridCoords[i].second
+                    it[lat] = valenciaCoords[i].first
+                    it[lon] = valenciaCoords[i].second
                 }
             }
         }
@@ -324,18 +354,134 @@ fun seedDatabase() {
         Conversaciones.update({ Conversaciones.id eq conversacionId }) {
             it[fechaUltimoMensaje] = "2026-06-05 20:03:00"
         }
+    } else {
+        // 2. Si ya hay datos, solo limpiar tags y regenerarlos
+        TagObras.deleteAll()
+        Tags.deleteAll()
+
+        val tagIdByName = ALL_NEW_TAGS.associateWith { name ->
+            Tags.insertAndGetId {
+                it[nombre] = name
+                it[descrip] = ""
+            }
+        }
+
+        // Asociar nuevos tags a todas las obras existentes
+        val existingObras = Obras.selectAll().toList()
+        existingObras.forEach { row ->
+            val obraId = row[Obras.id]
+            val imgUrl = row[Obras.imgUrl] ?: ""
+
+            val (category, subTagsList) = when {
+                imgUrl.contains("pintura", ignoreCase = true) -> "Pintura" to SUBTAGS_PINTURA
+                imgUrl.contains("escultura", ignoreCase = true) -> "Escultura" to SUBTAGS_ESCULTURA
+                imgUrl.contains("fotografia", ignoreCase = true) || imgUrl.contains("foto", ignoreCase = true) || imgUrl.contains("madrid", ignoreCase = true) || imgUrl.contains("valencia", ignoreCase = true) -> "Fotografía" to SUBTAGS_FOTOGRAFIA
+                else -> "Pintura" to SUBTAGS_PINTURA
+            }
+
+            // Asignar categoría
+            tagIdByName[category]?.let { tagId ->
+                TagObras.insert {
+                    it[idTag] = tagId
+                    it[idObra] = obraId
+                }
+            }
+
+            // Asignar 3 sub-tags aleatorios
+            val chosen = subTagsList.shuffled().take(3)
+            chosen.forEach { tagNombre ->
+                if (tagNombre != category) {
+                    tagIdByName[tagNombre]?.let { tagId ->
+                        try {
+                            TagObras.insert {
+                                it[idTag] = tagId
+                                it[idObra] = obraId
+                            }
+                        } catch (e: Exception) {
+                            // Ignorar duplicados
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 fun Route.seedRoutes() {
     get("/seed") {
         try {
             transaction {
-                seedDatabase()
+                seedDatabase(force = true)
             }
             call.respondText("Seed completado: Textos y descripciones artísticas generadas con éxito.", status = HttpStatusCode.OK)
         } catch (e: Exception) {
             e.printStackTrace()
             call.respondText("Error poblando DB: ${e.localizedMessage}", status = HttpStatusCode.InternalServerError)
+        }
+    }
+
+    // Endpoint para actualizar SOLO ubicaciones de exposiciones existentes a Valencia
+    get("/update-locations") {
+        try {
+            transaction {
+                val valenciaPlaces = listOf(
+                    "IVAM (Instituto Valenciano de Arte Moderno)" to "Calle de Guillem de Castro, 118, 46003 Valencia, España",
+                    "Museo de Bellas Artes de Valencia" to "Calle de San Pío V, 9, 46010 Valencia, España",
+                    "Museo de las Ciencias Príncipe Felipe" to "Avenida del Profesor López Piñero, 7, 46013 Valencia, España",
+                    "Palacio del Marqués de Dos Aguas" to "Calle del Poeta Querol, 2, 46002 Valencia, España",
+                    "La Lonja de la Seda de Valencia" to "Calle de la Lonja, 2, 46001 Valencia, España",
+                    "Centro del Carmen de Cultura Contemporánea" to "Calle del Museo, 2, 46003 Valencia, España",
+                    "Fundación Bancaja Valencia" to "Plaza de Tetuán, 23, 46003 Valencia, España",
+                    "Bombas Gens Centre d'Art" to "Avenida de Burjassot, 54, 46009 Valencia, España"
+                )
+
+                val valenciaCoords = listOf(
+                    39.4699 to -0.3763, // IVAM
+                    39.4746 to -0.3752, // Museo Bellas Artes
+                    39.4626 to -0.3456, // Ciudad de las Artes
+                    39.4789 to -0.3789, // Torres de Serranos
+                    39.4735 to -0.3846, // Lonja de la Seda
+                    39.4589 to -0.3765, // Centro del Carmen
+                    39.4820 to -0.3540, // Fundación Bancaja
+                    39.4682 to -0.3685  // Bombas Gens
+                )
+
+                // Obtener todas las exposiciones ordenadas por ID
+                val expos = Exposiciones.selectAll().orderBy(Exposiciones.id).toList()
+
+                expos.forEachIndexed { i, row ->
+                    if (i < valenciaPlaces.size) {
+                        val expoId = row[Exposiciones.id]
+                        val (nombreLugarVal, ubicacionVal) = valenciaPlaces[i]
+                        val (lat, lon) = valenciaCoords[i]
+
+                        // Actualizar exposición
+                        Exposiciones.update({ Exposiciones.id eq expoId }) {
+                            it[nombreLugar] = nombreLugarVal
+                            it[ubicacion] = ubicacionVal
+                        }
+
+                        // Actualizar o insertar baliza
+                        val existingBaliza = Balizas.selectAll().where { Balizas.id eq expoId }.firstOrNull()
+                        if (existingBaliza != null) {
+                            Balizas.update({ Balizas.id eq expoId }) {
+                                it[Balizas.lat] = lat
+                                it[Balizas.lon] = lon
+                            }
+                        } else {
+                            Balizas.insert {
+                                it[id] = expoId
+                                it[Balizas.lat] = lat
+                                it[Balizas.lon] = lon
+                            }
+                        }
+                    }
+                }
+            }
+            call.respondText("Ubicaciones actualizadas a Valencia correctamente.", status = HttpStatusCode.OK)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            call.respondText("Error actualizando ubicaciones: ${e.localizedMessage}", status = HttpStatusCode.InternalServerError)
         }
     }
 }
