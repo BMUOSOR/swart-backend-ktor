@@ -48,27 +48,15 @@ val SUBTAGS_FOTOGRAFIA = listOf(
     "identidad", "cuerpo", "memoria", "familia", "ciudad", "paisaje", "arquitectura", "vida cotidiana", "trabajo", "política", "conflicto", "migración", "naturaleza", "intimidad", "tiempo", "archivo", "comunidad"
 )
 
-<<<<<<< HEAD
-fun seedDatabase() {
-    Mensajes.deleteAll()
-    Conversaciones.deleteAll()
-    Invitaciones.deleteAll()
-    Likes.deleteAll()
-    Feeds.deleteAll()
-    Obras.deleteAll()
-    Balizas.deleteAll()
-    ArtistaExposiciones.deleteAll()
-    Exposiciones.deleteAll()
-    Tags.deleteAll()
-    Artistas.deleteAll()
-    Interesados.deleteAll()
-    Usuarios.deleteAll()
-=======
 fun seedDatabase(force: Boolean = false) {
     val isDbEmpty = Usuarios.selectAll().empty() || force
 
     if (isDbEmpty) {
         // 1. Limpieza total si la DB está vacía
+        Mensajes.deleteAll()
+        Conversaciones.deleteAll()
+        Invitaciones.deleteAll()
+        Seguidores.deleteAll()
         TagObras.deleteAll()
         Likes.deleteAll()
         Feeds.deleteAll()
@@ -80,7 +68,6 @@ fun seedDatabase(force: Boolean = false) {
         Artistas.deleteAll()
         Interesados.deleteAll()
         Usuarios.deleteAll()
->>>>>>> 99e5185 (feat: add /update-locations endpoint to patch baliza coords to Valencia)
 
         val baseUrl = "https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/"
 
