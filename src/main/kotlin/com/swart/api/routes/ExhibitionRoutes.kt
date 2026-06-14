@@ -110,7 +110,7 @@ fun Route.exhibitionRoutes() {
                 resolvedLon = req.lon
             } else if (!req.ubicacion.isNullOrBlank()) {
                 // Geocodificar la dirección escrita
-                val geoResult = runCatching { GeocodingService.verifyAddress(req.ubicacion) }.getOrNull()
+                val geoResult = runCatching { GeocodingService.verifyAddress(req.ubicacion) }.getOrNull()?.firstOrNull()
                 resolvedLat = geoResult?.lat?.toDoubleOrNull()
                 resolvedLon = geoResult?.lon?.toDoubleOrNull()
             } else {
@@ -257,10 +257,10 @@ fun Route.exhibitionRoutes() {
             // Verificar dirección antes de la transacción si se provee una ubicación
             val coordinates = if (!req.ubicacion.isNullOrBlank()) {
                 val result = GeocodingService.verifyAddress(req.ubicacion)
-                if (result == null) {
+                if (result.isEmpty()) {
                     return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "La dirección no es válida o no existe"))
                 }
-                result
+                result.firstOrNull()
             } else null
 
             val updated = transaction {
