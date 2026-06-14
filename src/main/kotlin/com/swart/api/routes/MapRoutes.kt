@@ -145,10 +145,17 @@ fun Route.mapRoutes() {
             try {
                 val req = call.receive<EmptyBalizaRequest>()
                 val newId = transaction {
+                    // Fallback para testing local sin sesión iniciada (-1)
+                    val propietarioFinal = if (req.idPropietario <= 0) {
+                        com.swart.api.models.Usuarios.selectAll().firstOrNull()?.get(com.swart.api.models.Usuarios.id)?.value ?: 1L
+                    } else {
+                        req.idPropietario
+                    }
+                    
                     BalizasVacias.insertAndGetId {
                         it[lat]           = req.lat
                         it[lon]           = req.lon
-                        it[idPropietario] = req.idPropietario
+                        it[idPropietario] = propietarioFinal
                     }.value
                 }
                 call.respond(HttpStatusCode.Created, EmptyBalizaDto(id = newId, lat = req.lat, lon = req.lon, idPropietario = req.idPropietario))
