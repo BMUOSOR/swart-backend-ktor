@@ -147,7 +147,16 @@ fun Route.mapRoutes() {
                 val newId = transaction {
                     // Fallback para testing local sin sesión iniciada (-1)
                     val propietarioFinal = if (req.idPropietario <= 0) {
-                        com.swart.api.models.Usuarios.selectAll().firstOrNull()?.get(com.swart.api.models.Usuarios.id)?.value ?: 1L
+                        val firstUser = com.swart.api.models.Usuarios.selectAll().firstOrNull()?.get(com.swart.api.models.Usuarios.id)?.value
+                        if (firstUser == null) {
+                            com.swart.api.models.Usuarios.insertAndGetId {
+                                it[usuario] = "dummy_${System.currentTimeMillis()}"
+                                it[password] = "dummy"
+                                it[nombre] = "Dummy User"
+                            }.value
+                        } else {
+                            firstUser
+                        }
                     } else {
                         req.idPropietario
                     }
@@ -336,7 +345,7 @@ fun Route.mapRoutes() {
                 return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Dirección vacía"))
             }
             val result = com.swart.api.services.GeocodingService.verifyAddress(address)
-            if (result == null) {
+            if (result.isEmpty()) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "La dirección no es válida o no existe"))
             } else {
                 call.respond(HttpStatusCode.OK, result)

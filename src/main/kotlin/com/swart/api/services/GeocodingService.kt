@@ -43,26 +43,26 @@ object GeocodingService {
         }
     }
 
-    suspend fun verifyAddress(address: String): NominatimResult? {
-        if (address.isBlank()) return null
+    suspend fun verifyAddress(address: String): List<NominatimResult> {
+        if (address.isBlank()) return emptyList()
         return try {
             val response: HttpResponse = client.get("https://nominatim.openstreetmap.org/search") {
                 parameter("q", address)
                 parameter("format", "json")
-                parameter("limit", "1")
+                parameter("limit", "5")
                 headers {
                     append(HttpHeaders.UserAgent, "SwartApp/1.0 (antigravity)")
                 }
             }
             if (response.status.isSuccess()) {
                 val results: List<NominatimResult> = response.body()
-                results.firstOrNull()
+                results
             } else {
-                null
+                emptyList()
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            emptyList()
         }
     }
 }
