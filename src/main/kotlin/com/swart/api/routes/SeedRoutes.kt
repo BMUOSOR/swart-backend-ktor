@@ -294,27 +294,31 @@ fun seedDatabase(force: Boolean = false) {
         }
 
         // Balizas Gubernamentales (Bibliotecas de Valencia)
+        data class BibliotecaData(val nombre: String, val direccion: String, val telefono: String, val email: String, val lat: Double, val lon: Double)
+
         val bibliotecas = listOf(
-            Triple("Arrancapins", "C/ d'Alberic, 18", 39.4702 to -0.3914),
-            Triple("Sant Pau", "C/ Escultor Miquel Navarro, 3", 39.4845 to -0.3892),
-            Triple("Marxalenes", "C/ de Reus, s/n", 39.4878 to -0.3830),
-            Triple("Patraix", "C/ Assagador de les Monges, s/n", 39.4596 to -0.3932),
-            Triple("Sant Marcel·lí - La Rambleta", "C/ de Pius IX, 2", 39.4557 to -0.3897),
-            Triple("Na Rovella", "C/ Alcalde Gisbert Rico, 20", 39.4580 to -0.3623),
-            Triple("Cabanyal - Casa de la Reina", "C/ de la Reina, 85", 39.4714 to -0.3275),
-            Triple("Natzaret", "C/ de Fontilles, 35", 39.4493 to -0.3358),
-            Triple("Benimaclet", "C/ de Francesc Martínez, 32", 39.4826 to -0.3593),
-            Triple("Torrefiel", "C/ de Domènec Gómez, 35", 39.4943 to -0.3636),
-            Triple("Benicalap", "C/ Poeta Serrano Clavero, 40", 39.4921 to -0.3860),
-            Triple("Beniferri", "C/ dels Xiprers, s/n", 39.4872 to -0.4031)
+            BibliotecaData("Biblioteca d'Arrancapins - Eduard Escalante", "C/ d'Alberic, 18 - 46008 València", "962 084 520", "beduardescalante@valencia.es", 39.4702, -0.3914),
+            BibliotecaData("Biblioteca de Sant Pau - Francesc Almela i Vives", "C/ de l'Escultor Miquel Navarro, 3 - 46015 València", "963 482 771", "bfrancescalmela@valencia.es", 39.4845, -0.3892),
+            BibliotecaData("Biblioteca de Marxalenes - Joanot Martorell", "C/ de Reus, s/n - 46009 València", "963 483 269", "bjoanotmartorell@valencia.es", 39.4878, -0.3830),
+            BibliotecaData("Biblioteca de Patraix - Azorín", "C/ del Assagador de les Monges, s/n - 46018 València", "963 577 694", "bazorin@valencia.es", 39.4596, -0.3932),
+            BibliotecaData("Biblioteca de Sant Marcel·lí - Cami Real - Clara Santiró i Font", "Centre Cultural La Rambleta, C/ de Pius IX, 2 - 46017 València", "962 082 718", "bclarasantiro@valencia.es", 39.4557, -0.3897),
+            BibliotecaData("Biblioteca de Na Rovella - Joaquim Martí i Gadea", "C/ de l'Alcalde Gisbert Rico, 20 - 46013 València", "962 084 098", "bjoaquimmarti@valencia.es", 39.4580, -0.3623),
+            BibliotecaData("Biblioteca del Cabanyal - el Canyamelar - Casa de la Reina", "C/ de la Reina, 85 - 46011 València", "963 715 292", "bcasadelareina@valencia.es", 39.4714, -0.3275),
+            BibliotecaData("Biblioteca de Natzaret - Del Mar", "C/ de Fontilles, 35 - 46024 València", "962 087 421", "bdelmar@valencia.es", 39.4493, -0.3358),
+            BibliotecaData("Biblioteca de Benimaclet - Carola Reig", "C/ de Francesc Martínez, 32-34 - 46020 València", "962 084 302", "bcarolareig@valencia.es", 39.4826, -0.3593),
+            BibliotecaData("Biblioteca de Torrefiel - Isabel de Villena", "C/ de Domènec Gómez, 35-37 - 46025 València", "962 087 351", "bisabeldevillena@valencia.es", 39.4943, -0.3636),
+            BibliotecaData("Biblioteca de Benicalap - Carmelina Sánchez-Cutillas", "C/ del Poeta Serrano Clavero, 40 - 46025 València", "962 083 601", "bcarmelinasanchez@valencia.es", 39.4921, -0.3860),
+            BibliotecaData("Biblioteca de Beniferri - Joan de Timoneda", "C/ dels Xiprers, s/n - 46015 València", "963 400 896", "bjoantimoneda@valencia.es", 39.4872, -0.4031)
         )
 
-        bibliotecas.forEach { (nombreLib, direccionLib, coords) ->
+        bibliotecas.forEach { lib ->
             BalizasGubernamentales.insert {
-                it[nombre] = nombreLib
-                it[direccion] = direccionLib
-                it[lat] = coords.first
-                it[lon] = coords.second
+                it[nombre] = lib.nombre
+                it[direccion] = lib.direccion
+                it[telefono] = lib.telefono
+                it[email] = lib.email
+                it[lat] = lib.lat
+                it[lon] = lib.lon
             }
         }
 
