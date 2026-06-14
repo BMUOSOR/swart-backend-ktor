@@ -56,12 +56,14 @@ fun seedDatabase(force: Boolean = false) {
         Mensajes.deleteAll()
         Conversaciones.deleteAll()
         Invitaciones.deleteAll()
-        Seguidores.deleteAll()
+        PropuestasBalizaVacia.deleteAll()
         TagObras.deleteAll()
         Likes.deleteAll()
         Feeds.deleteAll()
         Obras.deleteAll()
         Balizas.deleteAll()
+        BalizasVacias.deleteAll()
+        BalizasGubernamentales.deleteAll()
         ArtistaExposiciones.deleteAll()
         Exposiciones.deleteAll()
         Tags.deleteAll()
@@ -290,6 +292,32 @@ fun seedDatabase(force: Boolean = false) {
                 }
             }
         }
+
+        // Balizas Gubernamentales (Bibliotecas de Valencia)
+        val bibliotecas = listOf(
+            Triple("Arrancapins", "C/ d'Alberic, 18", 39.4702 to -0.3914),
+            Triple("Sant Pau", "C/ Escultor Miquel Navarro, 3", 39.4845 to -0.3892),
+            Triple("Marxalenes", "C/ de Reus, s/n", 39.4878 to -0.3830),
+            Triple("Patraix", "C/ Assagador de les Monges, s/n", 39.4596 to -0.3932),
+            Triple("Sant Marcel·lí - La Rambleta", "C/ de Pius IX, 2", 39.4557 to -0.3897),
+            Triple("Na Rovella", "C/ Alcalde Gisbert Rico, 20", 39.4580 to -0.3623),
+            Triple("Cabanyal - Casa de la Reina", "C/ de la Reina, 85", 39.4714 to -0.3275),
+            Triple("Natzaret", "C/ de Fontilles, 35", 39.4493 to -0.3358),
+            Triple("Benimaclet", "C/ de Francesc Martínez, 32", 39.4826 to -0.3593),
+            Triple("Torrefiel", "C/ de Domènec Gómez, 35", 39.4943 to -0.3636),
+            Triple("Benicalap", "C/ Poeta Serrano Clavero, 40", 39.4921 to -0.3860),
+            Triple("Beniferri", "C/ dels Xiprers, s/n", 39.4872 to -0.4031)
+        )
+
+        bibliotecas.forEach { (nombreLib, direccionLib, coords) ->
+            BalizasGubernamentales.insert {
+                it[nombre] = nombreLib
+                it[direccion] = direccionLib
+                it[lat] = coords.first
+                it[lon] = coords.second
+            }
+        }
+
 
         // Invitación: chica_1 (Elena) invita a chica_2 (Lucía) a colaborar en "Ecos del Renacimiento"
         Invitaciones.insert {

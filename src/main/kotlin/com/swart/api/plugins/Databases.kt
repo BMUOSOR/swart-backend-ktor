@@ -68,7 +68,6 @@ fun Application.configureDatabases() {
             Artistas,
             Exposiciones,
             Balizas,
-            BalizasVacias,
             Obras,
             Tags,
             TagObras,
@@ -80,7 +79,10 @@ fun Application.configureDatabases() {
             ArtistaExposiciones,
             Invitaciones,
             Conversaciones,
-            Mensajes
+            Mensajes,
+            BalizasVacias,
+            PropuestasBalizaVacia,
+            BalizasGubernamentales
         )
 
         if (isPostgres) {

@@ -11,46 +11,89 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.random.Random
 
-@Serializable
-data class EmptyBalizaRequest(val lat: Double, val lon: Double)
+// ─── DTOs ─────────────────────────────────────────────────────────────────────
 
 @Serializable
-data class EmptyBalizaDto(val id: Long, val lat: Double, val lon: Double)
+data class EmptyBalizaRequest(val lat: Double, val lon: Double, val idPropietario: Long)
+
+@Serializable
+data class EmptyBalizaDto(val id: Long, val lat: Double, val lon: Double, val idPropietario: Long)
+
+@Serializable
+data class GovBalizaDto(
+    val id: Long,
+    val nombre: String,
+    val direccion: String,
+    val telefono: String?,
+    val email: String?,
+    val lat: Double,
+    val lon: Double
+)
+
+@Serializable
+data class PropuestaRequest(
+    val idArtista: Long,
+    val titulo: String,
+    val descrip: String? = null,
+    val fechaInicio: String? = null,
+    val fechaFin: String? = null,
+    val precio: Double? = null,
+    val categoria: String? = null
+)
+
+@Serializable
+data class PropuestaDto(
+    val id: Long,
+    val idBaliza: Long,
+    val idArtista: Long,
+    val titulo: String,
+    val descrip: String?,
+    val fechaInicio: String?,
+    val fechaFin: String?,
+    val precio: Double?,
+    val categoria: String?,
+    val estado: String,
+    val fechaCreacion: String
+)
+
+@Serializable
+data class PropuestaEstadoRequest(val estado: String) // "aceptada" | "rechazada"
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
 
 fun Route.mapRoutes() {
     route("/api/map") {
+
+        // ── Balizas de exposiciones ──────────────────────────────────────────
         get("/balizas") {
             try {
                 val pins = transaction {
-                    // Query all Balizas with their corresponding Exposicion
                     val query = (Balizas innerJoin Exposiciones)
-                        .select { Exposiciones.activa eq true }
-                    
+                        .selectAll().where { Exposiciones.activa eq true }
+
                     query.map { row ->
                         val idExp = row[Exposiciones.id].value
-                        
-                        // 1. Categoría directa de la exposición (establecida al crear)
+
                         val categoriaExpo = row[Exposiciones.categoria]?.lowercase()?.trim()
 
-                        // 2. Tags de las obras como fallback
                         val tagsQuery = (Obras innerJoin TagObras innerJoin Tags)
-                            .select { Obras.idExposicion eq idExp }
+                            .selectAll().where { Obras.idExposicion eq idExp }
                             .map { it[Tags.nombre].lowercase() }
 
-                        // Prioridad: categoría propia > tags de obras > "pintura" por defecto
                         val mainTag = when {
                             categoriaExpo == "escultura" || tagsQuery.any { it.contains("escultura") } -> "escultura"
                             categoriaExpo == "fotografía" || categoriaExpo == "fotografia" ||
                                 tagsQuery.any { it.contains("fotografía") || it.contains("fotografia") } -> "fotografía"
                             else -> "pintura"
                         }
-                        
-                        // Mock distance and match for MVP
+
                         val distanceStr = "${Random.nextInt(1, 15)} km"
                         val matchPct = Random.nextInt(70, 100)
-                        
+
                         val now = System.currentTimeMillis()
                         val dayMillis = 24 * 60 * 60 * 1000L
                         val sDate = now + Random.nextLong(-5, 5) * dayMillis
@@ -71,7 +114,6 @@ fun Route.mapRoutes() {
                         )
                     }
                 }
-                
                 call.respond(HttpStatusCode.OK, pins)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -79,15 +121,16 @@ fun Route.mapRoutes() {
             }
         }
 
-        // Empty balizas
+        // ── Balizas vacías ───────────────────────────────────────────────────
         get("/balizas-vacias") {
             try {
                 val list = transaction {
                     BalizasVacias.selectAll().map { row ->
                         EmptyBalizaDto(
-                            id  = row[BalizasVacias.id].value,
-                            lat = row[BalizasVacias.lat],
-                            lon = row[BalizasVacias.lon]
+                            id             = row[BalizasVacias.id].value,
+                            lat            = row[BalizasVacias.lat],
+                            lon            = row[BalizasVacias.lon],
+                            idPropietario  = row[BalizasVacias.idPropietario].value
                         )
                     }
                 }
@@ -103,11 +146,12 @@ fun Route.mapRoutes() {
                 val req = call.receive<EmptyBalizaRequest>()
                 val newId = transaction {
                     BalizasVacias.insertAndGetId {
-                        it[lat] = req.lat
-                        it[lon] = req.lon
+                        it[lat]           = req.lat
+                        it[lon]           = req.lon
+                        it[idPropietario] = req.idPropietario
                     }.value
                 }
-                call.respond(HttpStatusCode.Created, EmptyBalizaDto(id = newId, lat = req.lat, lon = req.lon))
+                call.respond(HttpStatusCode.Created, EmptyBalizaDto(id = newId, lat = req.lat, lon = req.lon, idPropietario = req.idPropietario))
             } catch (e: Exception) {
                 e.printStackTrace()
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
@@ -118,7 +162,13 @@ fun Route.mapRoutes() {
             try {
                 val balizaId = call.parameters["id"]?.toLongOrNull()
                     ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
-                transaction { BalizasVacias.deleteWhere { BalizasVacias.id eq balizaId } }
+                transaction {
+                    // Cancel pending proposals and notify (set estado = "cancelada")
+                    PropuestasBalizaVacia.update({ PropuestasBalizaVacia.idBaliza eq balizaId and (PropuestasBalizaVacia.estado eq "pendiente") }) {
+                        it[estado] = "cancelada"
+                    }
+                    BalizasVacias.deleteWhere { BalizasVacias.id eq balizaId }
+                }
                 call.respond(HttpStatusCode.OK, mapOf("success" to true))
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -126,6 +176,139 @@ fun Route.mapRoutes() {
             }
         }
 
+        // ── Propuestas de baliza vacía ────────────────────────────────────────
+        post("/baliza-vacia/{id}/propuesta") {
+            try {
+                val balizaId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@post call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                val req = call.receive<PropuestaRequest>()
+                val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                val newId = transaction {
+                    PropuestasBalizaVacia.insertAndGetId {
+                        it[idBaliza]      = balizaId
+                        it[idArtista]     = req.idArtista
+                        it[titulo]        = req.titulo
+                        it[descrip]       = req.descrip
+                        it[fechaInicio]   = req.fechaInicio
+                        it[fechaFin]      = req.fechaFin
+                        it[precio]        = req.precio
+                        it[categoria]     = req.categoria
+                        it[estado]        = "pendiente"
+                        it[fechaCreacion] = now
+                    }.value
+                }
+                call.respond(HttpStatusCode.Created, mapOf("idPropuesta" to newId))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        // Propuestas recibidas por el propietario de una baliza vacía
+        get("/baliza-vacia/{id}/propuestas") {
+            try {
+                val balizaId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                val list = transaction {
+                    PropuestasBalizaVacia.selectAll().where { PropuestasBalizaVacia.idBaliza eq balizaId }
+                        .map { row ->
+                            PropuestaDto(
+                                id            = row[PropuestasBalizaVacia.id].value,
+                                idBaliza      = row[PropuestasBalizaVacia.idBaliza].value,
+                                idArtista     = row[PropuestasBalizaVacia.idArtista].value,
+                                titulo        = row[PropuestasBalizaVacia.titulo],
+                                descrip       = row[PropuestasBalizaVacia.descrip],
+                                fechaInicio   = row[PropuestasBalizaVacia.fechaInicio],
+                                fechaFin      = row[PropuestasBalizaVacia.fechaFin],
+                                precio        = row[PropuestasBalizaVacia.precio],
+                                categoria     = row[PropuestasBalizaVacia.categoria],
+                                estado        = row[PropuestasBalizaVacia.estado],
+                                fechaCreacion = row[PropuestasBalizaVacia.fechaCreacion]
+                            )
+                        }
+                }
+                call.respond(HttpStatusCode.OK, list)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        // Propuestas enviadas por un artista (para ver su estado)
+        get("/propuestas/artista/{idArtista}") {
+            try {
+                val artistaId = call.parameters["idArtista"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                val list = transaction {
+                    PropuestasBalizaVacia.selectAll().where { PropuestasBalizaVacia.idArtista eq artistaId }
+                        .map { row ->
+                            PropuestaDto(
+                                id            = row[PropuestasBalizaVacia.id].value,
+                                idBaliza      = row[PropuestasBalizaVacia.idBaliza].value,
+                                idArtista     = row[PropuestasBalizaVacia.idArtista].value,
+                                titulo        = row[PropuestasBalizaVacia.titulo],
+                                descrip       = row[PropuestasBalizaVacia.descrip],
+                                fechaInicio   = row[PropuestasBalizaVacia.fechaInicio],
+                                fechaFin      = row[PropuestasBalizaVacia.fechaFin],
+                                precio        = row[PropuestasBalizaVacia.precio],
+                                categoria     = row[PropuestasBalizaVacia.categoria],
+                                estado        = row[PropuestasBalizaVacia.estado],
+                                fechaCreacion = row[PropuestasBalizaVacia.fechaCreacion]
+                            )
+                        }
+                }
+                call.respond(HttpStatusCode.OK, list)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        // Aceptar o rechazar propuesta
+        put("/propuesta/{id}/estado") {
+            try {
+                val propuestaId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                val req = call.receive<PropuestaEstadoRequest>()
+                if (req.estado !in listOf("aceptada", "rechazada")) {
+                    return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Estado inválido"))
+                }
+                transaction {
+                    PropuestasBalizaVacia.update({ PropuestasBalizaVacia.id eq propuestaId }) {
+                        it[estado] = req.estado
+                    }
+                }
+                call.respond(HttpStatusCode.OK, mapOf("success" to true))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        // ── Balizas gubernamentales ───────────────────────────────────────────
+        get("/balizas-gubernamentales") {
+            try {
+                val list = transaction {
+                    BalizasGubernamentales.selectAll().map { row ->
+                        GovBalizaDto(
+                            id        = row[BalizasGubernamentales.id].value,
+                            nombre    = row[BalizasGubernamentales.nombre],
+                            direccion = row[BalizasGubernamentales.direccion],
+                            telefono  = row[BalizasGubernamentales.telefono],
+                            email     = row[BalizasGubernamentales.email],
+                            lat       = row[BalizasGubernamentales.lat],
+                            lon       = row[BalizasGubernamentales.lon]
+                        )
+                    }
+                }
+                call.respond(HttpStatusCode.OK, list)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        // ── Geocoding ─────────────────────────────────────────────────────────
         get("/reverse-geocode") {
             val lat = call.request.queryParameters["lat"]?.toDoubleOrNull()
             val lon = call.request.queryParameters["lon"]?.toDoubleOrNull()
