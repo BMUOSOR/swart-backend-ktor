@@ -144,33 +144,48 @@ fun Route.mapRoutes() {
         post("/baliza-vacia") {
             try {
                 val req = call.receive<EmptyBalizaRequest>()
+                println("[DEBUG] POST /baliza-vacia -> lat=${req.lat}, lon=${req.lon}, idPropietario=${req.idPropietario}")
+
                 val newId = transaction {
-                    // Fallback para testing local sin sesión iniciada (-1)
-                    val propietarioFinal = if (req.idPropietario <= 0) {
-                        val firstUser = com.swart.api.models.Usuarios.selectAll().firstOrNull()?.get(com.swart.api.models.Usuarios.id)?.value
-                        if (firstUser == null) {
-                            com.swart.api.models.Usuarios.insertAndGetId {
-                                it[usuario] = "dummy_${System.currentTimeMillis()}"
-                                it[password] = "dummy"
-                                it[nombre] = "Dummy User"
-                            }.value
-                        } else {
-                            firstUser
+                    // Determinar propietario válido: verificar que existe en la tabla Usuario
+                    val propietarioFinal: Long = run {
+                        // Primero intentar con el ID recibido si es positivo
+                        if (req.idPropietario > 0) {
+                            val exists = com.swart.api.models.Usuarios
+                                .select { com.swart.api.models.Usuarios.id eq req.idPropietario }
+                                .count() > 0
+                            if (exists) return@run req.idPropietario
+                            println("[DEBUG] Usuario ${req.idPropietario} no encontrado en BD, usando fallback")
                         }
-                    } else {
-                        req.idPropietario
+                        // Fallback: buscar el primer usuario disponible
+                        val firstUser = com.swart.api.models.Usuarios.selectAll()
+                            .firstOrNull()?.get(com.swart.api.models.Usuarios.id)?.value
+                        if (firstUser != null) {
+                            println("[DEBUG] Usando primer usuario disponible: $firstUser")
+                            return@run firstUser
+                        }
+                        // Último recurso: crear un usuario dummy
+                        val dummyId = com.swart.api.models.Usuarios.insertAndGetId {
+                            it[usuario] = "dummy_${System.currentTimeMillis()}"
+                            it[password] = "dummy"
+                            it[nombre] = "Usuario Demo"
+                        }.value
+                        println("[DEBUG] Creado usuario dummy con id=$dummyId")
+                        dummyId
                     }
-                    
+
                     BalizasVacias.insertAndGetId {
                         it[lat]           = req.lat
                         it[lon]           = req.lon
                         it[idPropietario] = propietarioFinal
                     }.value
                 }
+                println("[DEBUG] Baliza vacía creada con id=$newId")
                 call.respond(HttpStatusCode.Created, EmptyBalizaDto(id = newId, lat = req.lat, lon = req.lon, idPropietario = req.idPropietario))
             } catch (e: Exception) {
                 e.printStackTrace()
-                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+                println("[ERROR] POST /baliza-vacia: ${e::class.simpleName}: ${e.message}")
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Error desconocido")))
             }
         }
 
