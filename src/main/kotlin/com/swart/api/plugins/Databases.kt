@@ -58,6 +58,8 @@ fun Application.configureDatabases() {
                 exec("ALTER TABLE \"Exposicion\" ADD COLUMN IF NOT EXISTS \"categoria\" TEXT DEFAULT NULL;")
                 exec("ALTER TABLE \"Obra\" ADD COLUMN IF NOT EXISTS \"idArtista\" BIGINT REFERENCES \"Artista\"(\"idArtista\") ON DELETE CASCADE;")
                 exec("ALTER TABLE \"Like\" ADD COLUMN IF NOT EXISTS \"fecha_like\" TIMESTAMP DEFAULT NOW();")
+                // Migración: añadir columna idPropietario a BalizaVacia si no existe
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"idPropietario\" BIGINT REFERENCES \"Usuario\"(\"idUsuario\") ON DELETE CASCADE;")
             } catch (e: Exception) {
                 e.printStackTrace()
             }
