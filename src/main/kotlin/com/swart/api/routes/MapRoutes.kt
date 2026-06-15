@@ -24,6 +24,32 @@ data class EmptyBalizaRequest(val lat: Double, val lon: Double, val idPropietari
 data class EmptyBalizaDto(val id: Long, val lat: Double, val lon: Double, val idPropietario: Long)
 
 @Serializable
+data class BalizaVaciaDetailDto(
+    val id: Long,
+    val lat: Double,
+    val lon: Double,
+    val idPropietario: Long,
+    val nombrePropietario: String,
+    val avatarPropietario: String?,
+    val titulo: String?,
+    val descripcion: String?,
+    val categorias: String?,
+    val dimensiones: String?,
+    val salas: String?,
+    val fotos: String?
+)
+
+@Serializable
+data class UpdateBalizaVaciaRequest(
+    val titulo: String? = null,
+    val descripcion: String? = null,
+    val categorias: String? = null,
+    val dimensiones: String? = null,
+    val salas: String? = null,
+    val fotos: String? = null
+)
+
+@Serializable
 data class GovBalizaDto(
     val id: Long,
     val nombre: String,
@@ -50,6 +76,8 @@ data class PropuestaDto(
     val id: Long,
     val idBaliza: Long,
     val idArtista: Long,
+    val nombreArtista: String = "",
+    val avatarArtista: String? = null,
     val titulo: String,
     val descrip: String?,
     val fechaInicio: String?,
@@ -207,6 +235,64 @@ fun Route.mapRoutes() {
             }
         }
 
+        // ── Detalle de baliza vacía ──────────────────────────────────────────
+        get("/baliza-vacia/{id}") {
+            try {
+                val balizaId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                val dto = transaction {
+                    val balizaRow = BalizasVacias.selectAll().where { BalizasVacias.id eq balizaId }.singleOrNull()
+                        ?: return@transaction null
+                    val propietarioId = balizaRow[BalizasVacias.idPropietario].value
+                    val usuarioRow = Usuarios.selectAll().where { Usuarios.id eq propietarioId }.singleOrNull()
+                    val nombre = usuarioRow?.let { "${it[Usuarios.nombre]} ${it[Usuarios.apellidos] ?: ""}".trim() } ?: ""
+                    val avatar = usuarioRow?.get(Usuarios.imgUrl)
+                    BalizaVaciaDetailDto(
+                        id = balizaId,
+                        lat = balizaRow[BalizasVacias.lat],
+                        lon = balizaRow[BalizasVacias.lon],
+                        idPropietario = propietarioId,
+                        nombrePropietario = nombre,
+                        avatarPropietario = avatar,
+                        titulo = balizaRow[BalizasVacias.titulo],
+                        descripcion = balizaRow[BalizasVacias.descripcion],
+                        categorias = balizaRow[BalizasVacias.categorias],
+                        dimensiones = balizaRow[BalizasVacias.dimensiones],
+                        salas = balizaRow[BalizasVacias.salas],
+                        fotos = balizaRow[BalizasVacias.fotos]
+                    )
+                }
+                if (dto == null) call.respond(HttpStatusCode.NotFound, mapOf("error" to "Baliza no encontrada"))
+                else call.respond(HttpStatusCode.OK, dto)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
+        // ── Editar detalle de baliza vacía (solo propietario) ───────────────
+        put("/baliza-vacia/{id}") {
+            try {
+                val balizaId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+                val req = call.receive<UpdateBalizaVaciaRequest>()
+                transaction {
+                    BalizasVacias.update({ BalizasVacias.id eq balizaId }) {
+                        req.titulo?.let { v -> it[titulo] = v }
+                        req.descripcion?.let { v -> it[descripcion] = v }
+                        req.categorias?.let { v -> it[categorias] = v }
+                        req.dimensiones?.let { v -> it[dimensiones] = v }
+                        req.salas?.let { v -> it[salas] = v }
+                        req.fotos?.let { v -> it[fotos] = v }
+                    }
+                }
+                call.respond(HttpStatusCode.OK, mapOf("success" to true))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+            }
+        }
+
         // ── Propuestas de baliza vacía ────────────────────────────────────────
         post("/baliza-vacia/{id}/propuesta") {
             try {
@@ -304,12 +390,70 @@ fun Route.mapRoutes() {
                 if (req.estado !in listOf("aceptada", "rechazada")) {
                     return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Estado inválido"))
                 }
-                transaction {
-                    PropuestasBalizaVacia.update({ PropuestasBalizaVacia.id eq propuestaId }) {
-                        it[estado] = req.estado
+
+                val idExpoCreada: Long? = if (req.estado == "aceptada") {
+                    transaction {
+                        // 1. Obtener datos de la propuesta
+                        val propRow = PropuestasBalizaVacia.selectAll().where { PropuestasBalizaVacia.id eq propuestaId }.singleOrNull()
+                            ?: return@transaction null
+                        val idBaliza = propRow[PropuestasBalizaVacia.idBaliza].value
+                        val idArtista = propRow[PropuestasBalizaVacia.idArtista].value
+
+                        // 2. Crear Exposicion con los datos de la propuesta
+                        val idExpo = Exposiciones.insertAndGetId {
+                            it[titulo]      = propRow[PropuestasBalizaVacia.titulo]
+                            it[descrip]     = propRow[PropuestasBalizaVacia.descrip]
+                            it[activa]      = true
+                            it[visitantes]  = 0L
+                            it[score]       = 0.0
+                            it[categoria]   = propRow[PropuestasBalizaVacia.categoria]
+                            it[fechaInicio] = propRow[PropuestasBalizaVacia.fechaInicio] ?: ""
+                            it[fechaFin]    = propRow[PropuestasBalizaVacia.fechaFin] ?: ""
+                            it[precio]      = propRow[PropuestasBalizaVacia.precio]
+                        }.value
+
+                        // 3. Asociar artista a la exposición
+                        ArtistaExposiciones.insert {
+                            it[ArtistaExposiciones.idArtista]    = idArtista
+                            it[ArtistaExposiciones.idExposicion] = idExpo
+                        }
+
+                        // 4. Crear Baliza para la exposición (usando la ubicación de la baliza vacía)
+                        val balizaRow = BalizasVacias.selectAll().where { BalizasVacias.id eq idBaliza }.singleOrNull()
+                        if (balizaRow != null) {
+                            Balizas.insert {
+                                it[Balizas.id]  = idExpo
+                                it[Balizas.lat] = balizaRow[BalizasVacias.lat]
+                                it[Balizas.lon] = balizaRow[BalizasVacias.lon]
+                            }
+                        }
+
+                        // 5. Marcar propuesta como aceptada y el resto de propuestas de esa baliza como rechazadas
+                        PropuestasBalizaVacia.update({ PropuestasBalizaVacia.id eq propuestaId }) {
+                            it[estado] = "aceptada"
+                        }
+                        PropuestasBalizaVacia.update({
+                            (PropuestasBalizaVacia.idBaliza eq idBaliza) and
+                            (PropuestasBalizaVacia.id neq propuestaId) and
+                            (PropuestasBalizaVacia.estado eq "pendiente")
+                        }) { it[estado] = "rechazada" }
+
+                        // 6. Eliminar la baliza vacía
+                        BalizasVacias.deleteWhere { BalizasVacias.id eq idBaliza }
+
+                        idExpo
                     }
+                } else {
+                    // Rechazar: solo actualizar estado
+                    transaction {
+                        PropuestasBalizaVacia.update({ PropuestasBalizaVacia.id eq propuestaId }) {
+                            it[estado] = req.estado
+                        }
+                    }
+                    null
                 }
-                call.respond(HttpStatusCode.OK, mapOf("success" to true))
+
+                call.respond(HttpStatusCode.OK, mapOf("success" to true, "idExposicion" to (idExpoCreada ?: -1L)))
             } catch (e: Exception) {
                 e.printStackTrace()
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))

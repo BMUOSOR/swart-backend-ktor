@@ -142,4 +142,26 @@ fun Route.invitationRoutes() {
             call.respond(mapOf("success" to updated))
         }
     }
+
+    // GET /api/invitations/{userId}/unread-count → conteo de propuestas pendientes (badge)
+    route("/api/invitations/{userId}/unread-count") {
+        get {
+            val userId = call.parameters["userId"]?.toLongOrNull()
+                ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "ID inválido"))
+
+            val count = transaction {
+                val invCount = Invitaciones
+                    .select { (Invitaciones.idArtistaReceiver eq userId) and (Invitaciones.estado eq "pendiente") }
+                    .count()
+
+                val propuestaCount = PropuestasBalizaVacia
+                    .innerJoin(BalizasVacias, onColumn = { PropuestasBalizaVacia.idBaliza }, otherColumn = { BalizasVacias.id })
+                    .select { (BalizasVacias.idPropietario eq userId) and (PropuestasBalizaVacia.estado eq "pendiente") }
+                    .count()
+
+                invCount + propuestaCount
+            }
+            call.respond(mapOf("count" to count))
+        }
+    }
 }

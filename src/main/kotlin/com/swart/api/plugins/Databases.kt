@@ -60,6 +60,13 @@ fun Application.configureDatabases() {
                 exec("ALTER TABLE \"Like\" ADD COLUMN IF NOT EXISTS \"fecha_like\" TIMESTAMP DEFAULT NOW();")
                 // Migración: añadir columna idPropietario a BalizaVacia si no existe
                 exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"idPropietario\" BIGINT REFERENCES \"Usuario\"(\"idUsuario\") ON DELETE CASCADE;")
+                // Migración: campos de detalle del espacio
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"titulo\" TEXT DEFAULT NULL;")
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"descripcion\" TEXT DEFAULT NULL;")
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"categorias\" TEXT DEFAULT NULL;")
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"dimensiones\" TEXT DEFAULT NULL;")
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"salas\" TEXT DEFAULT NULL;")
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"fotos\" TEXT DEFAULT NULL;")
             } catch (e: Exception) {
                 e.printStackTrace()
             }
