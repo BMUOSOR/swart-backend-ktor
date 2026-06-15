@@ -11,7 +11,8 @@ data class InvitationDto(
     val idArtistaSender: Long,
     val nombreArtistaSender: String,
     val avatarArtistaSender: String?,
-    val estado: String // pendiente / aceptada / rechazada
+    val estado: String, // pendiente / aceptada / rechazada
+    val tipo: String = "invitacion"
 )
 
 @Serializable

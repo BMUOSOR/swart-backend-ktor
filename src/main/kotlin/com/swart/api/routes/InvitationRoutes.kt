@@ -49,8 +49,31 @@ fun Route.invitationRoutes() {
                         )
                     }
             }
+            val propuestas = transaction {
+                PropuestasBalizaVacia
+                    .innerJoin(BalizasVacias, onColumn = { PropuestasBalizaVacia.idBaliza }, otherColumn = { BalizasVacias.id })
+                    .select { (BalizasVacias.idPropietario eq userId) and (PropuestasBalizaVacia.estado eq "pendiente") }
+                    .mapNotNull { row ->
+                        val senderId = row[PropuestasBalizaVacia.idArtista].value
+                        val senderRow = (Artistas innerJoin Usuarios).select { Artistas.id eq senderId }.singleOrNull() ?: return@mapNotNull null
+                        val senderNombre = senderRow[Usuarios.nombre] + " " + (senderRow[Usuarios.apellidos] ?: "")
+                        val senderAvatar = senderRow[Usuarios.imgUrl]
 
-            call.respond(invitations)
+                        InvitationDto(
+                            idInvitacion = row[PropuestasBalizaVacia.id].value,
+                            idExposicion = row[PropuestasBalizaVacia.idBaliza].value,
+                            tituloExposicion = row[PropuestasBalizaVacia.titulo],
+                            exposicionImgUrl = null,
+                            idArtistaSender = senderId,
+                            nombreArtistaSender = senderNombre.trim(),
+                            avatarArtistaSender = senderAvatar,
+                            estado = row[PropuestasBalizaVacia.estado],
+                            tipo = "propuesta"
+                        )
+                    }
+            }
+
+            call.respond(invitations + propuestas)
         }
     }
 
