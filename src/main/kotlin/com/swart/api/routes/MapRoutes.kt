@@ -35,6 +35,7 @@ data class BalizaVaciaDetailDto(
     val descripcion: String?,
     val categorias: String?,
     val dimensiones: String?,
+    val plantas: String?,
     val salas: String?,
     val fotos: String?
 )
@@ -45,6 +46,7 @@ data class UpdateBalizaVaciaRequest(
     val descripcion: String? = null,
     val categorias: String? = null,
     val dimensiones: String? = null,
+    val plantas: String? = null,
     val salas: String? = null,
     val fotos: String? = null
 )
@@ -259,6 +261,7 @@ fun Route.mapRoutes() {
                         descripcion = balizaRow[BalizasVacias.descripcion],
                         categorias = balizaRow[BalizasVacias.categorias],
                         dimensiones = balizaRow[BalizasVacias.dimensiones],
+                        plantas = balizaRow[BalizasVacias.plantas],
                         salas = balizaRow[BalizasVacias.salas],
                         fotos = balizaRow[BalizasVacias.fotos]
                     )
@@ -283,6 +286,7 @@ fun Route.mapRoutes() {
                         req.descripcion?.let { v -> it[descripcion] = v }
                         req.categorias?.let { v -> it[categorias] = v }
                         req.dimensiones?.let { v -> it[dimensiones] = v }
+                        req.plantas?.let { v -> it[plantas] = v }
                         req.salas?.let { v -> it[salas] = v }
                         req.fotos?.let { v -> it[fotos] = v }
                     }

@@ -12,6 +12,7 @@ object BalizasVacias : LongIdTable("\"BalizaVacia\"") {
     val descripcion   = text("\"descripcion\"").nullable()
     val categorias    = text("\"categorias\"").nullable()     // CSV: "Pintura,Escultura"
     val dimensiones   = text("\"dimensiones\"").nullable()   // texto libre: "200m²"
+    val plantas       = text("\"plantas\"").nullable()       // texto libre: "3"
     val salas         = text("\"salas\"").nullable()          // JSON: [{"nombre":"Sala A","superficie":"80m²"}]
     val fotos         = text("\"fotos\"").nullable()           // JSON: ["url1","url2"]
 }
