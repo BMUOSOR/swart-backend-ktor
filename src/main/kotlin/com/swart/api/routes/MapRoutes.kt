@@ -206,6 +206,7 @@ fun Route.mapRoutes() {
                         it[lat]           = req.lat
                         it[lon]           = req.lon
                         it[idPropietario] = propietarioFinal
+                        it[fotos]         = "[\"https://bkrmqkpxidmemzxhefoc.supabase.co/storage/v1/object/public/Imagenes/Baliza_vacia_main.jpg\"]"
                     }.value
                 }
                 println("[DEBUG] Baliza vacía creada con id=$newId")
