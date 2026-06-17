@@ -397,56 +397,88 @@ fun Route.mapRoutes() {
                 }
 
                 val idExpoCreada: Long? = if (req.estado == "aceptada") {
-                    transaction {
-                        // 1. Obtener datos de la propuesta
-                        val propRow = PropuestasBalizaVacia.selectAll().where { PropuestasBalizaVacia.id eq propuestaId }.singleOrNull()
+                    // 1. Obtener datos de la propuesta y la baliza (dentro de transaction)
+                    data class PropuestaData(
+                        val idBaliza: Long, val idArtista: Long,
+                        val titulo: String, val descrip: String?,
+                        val categoria: String?, val fechaInicio: String?, val fechaFin: String?,
+                        val precio: Double?,
+                        val lat: Double, val lon: Double,
+                        val nombreEspacio: String?
+                    )
+                    val datos: PropuestaData? = transaction {
+                        val propRow = PropuestasBalizaVacia.selectAll()
+                            .where { PropuestasBalizaVacia.id eq propuestaId }.singleOrNull()
                             ?: return@transaction null
                         val idBaliza = propRow[PropuestasBalizaVacia.idBaliza].value
-                        val idArtista = propRow[PropuestasBalizaVacia.idArtista].value
+                        val balizaRow = BalizasVacias.selectAll()
+                            .where { BalizasVacias.id eq idBaliza }.singleOrNull()
+                            ?: return@transaction null
+                        PropuestaData(
+                            idBaliza     = idBaliza,
+                            idArtista    = propRow[PropuestasBalizaVacia.idArtista].value,
+                            titulo       = propRow[PropuestasBalizaVacia.titulo],
+                            descrip      = propRow[PropuestasBalizaVacia.descrip],
+                            categoria    = propRow[PropuestasBalizaVacia.categoria],
+                            fechaInicio  = propRow[PropuestasBalizaVacia.fechaInicio],
+                            fechaFin     = propRow[PropuestasBalizaVacia.fechaFin],
+                            precio       = propRow[PropuestasBalizaVacia.precio],
+                            lat          = balizaRow[BalizasVacias.lat],
+                            lon          = balizaRow[BalizasVacias.lon],
+                            nombreEspacio = balizaRow[BalizasVacias.titulo]
+                        )
+                    }
+                    if (datos == null) null
+                    else {
+                        // 2. Geocodificar la ubicación (fuera del transaction, es suspend)
+                        val geoResult = com.swart.api.services.GeocodingService
+                            .reverseGeocode(datos.lat, datos.lon)
+                        val ubicacionStr = geoResult?.display_name
 
-                        // 2. Crear Exposicion con los datos de la propuesta
-                        val idExpo = Exposiciones.insertAndGetId {
-                            it[titulo]      = propRow[PropuestasBalizaVacia.titulo]
-                            it[descrip]     = propRow[PropuestasBalizaVacia.descrip]
-                            it[activa]      = true
-                            it[visitantes]  = 0L
-                            it[score]       = 0.0
-                            it[categoria]   = propRow[PropuestasBalizaVacia.categoria]
-                            it[fechaInicio] = propRow[PropuestasBalizaVacia.fechaInicio] ?: ""
-                            it[fechaFin]    = propRow[PropuestasBalizaVacia.fechaFin] ?: ""
-                            it[precio]      = propRow[PropuestasBalizaVacia.precio]
-                        }.value
+                        // 3. Crear la Exposicion con ubicación y nombre de lugar
+                        transaction {
+                            val idExpo = Exposiciones.insertAndGetId {
+                                it[titulo]      = datos.titulo
+                                it[descrip]     = datos.descrip
+                                it[activa]      = true
+                                it[visitantes]  = 0L
+                                it[score]       = 0.0
+                                it[categoria]   = datos.categoria
+                                it[fechaInicio] = datos.fechaInicio ?: ""
+                                it[fechaFin]    = datos.fechaFin ?: ""
+                                it[precio]      = datos.precio
+                                it[ubicacion]   = ubicacionStr
+                                it[nombreLugar] = datos.nombreEspacio
+                            }.value
 
-                        // 3. Asociar artista a la exposición
-                        ArtistaExposiciones.insert {
-                            it[ArtistaExposiciones.idArtista]    = idArtista
-                            it[ArtistaExposiciones.idExposicion] = idExpo
-                        }
+                            // 4. Asociar artista a la exposición
+                            ArtistaExposiciones.insert {
+                                it[ArtistaExposiciones.idArtista]    = datos.idArtista
+                                it[ArtistaExposiciones.idExposicion] = idExpo
+                            }
 
-                        // 4. Crear Baliza para la exposición (usando la ubicación de la baliza vacía)
-                        val balizaRow = BalizasVacias.selectAll().where { BalizasVacias.id eq idBaliza }.singleOrNull()
-                        if (balizaRow != null) {
+                            // 5. Crear Baliza para la exposición
                             Balizas.insert {
                                 it[Balizas.id]  = idExpo
-                                it[Balizas.lat] = balizaRow[BalizasVacias.lat]
-                                it[Balizas.lon] = balizaRow[BalizasVacias.lon]
+                                it[Balizas.lat] = datos.lat
+                                it[Balizas.lon] = datos.lon
                             }
+
+                            // 6. Marcar propuesta como aceptada y el resto como rechazadas
+                            PropuestasBalizaVacia.update({ PropuestasBalizaVacia.id eq propuestaId }) {
+                                it[estado] = "aceptada"
+                            }
+                            PropuestasBalizaVacia.update({
+                                (PropuestasBalizaVacia.idBaliza eq datos.idBaliza) and
+                                (PropuestasBalizaVacia.id neq propuestaId) and
+                                (PropuestasBalizaVacia.estado eq "pendiente")
+                            }) { it[estado] = "rechazada" }
+
+                            // 7. Eliminar la baliza vacía
+                            BalizasVacias.deleteWhere { BalizasVacias.id eq datos.idBaliza }
+
+                            idExpo
                         }
-
-                        // 5. Marcar propuesta como aceptada y el resto de propuestas de esa baliza como rechazadas
-                        PropuestasBalizaVacia.update({ PropuestasBalizaVacia.id eq propuestaId }) {
-                            it[estado] = "aceptada"
-                        }
-                        PropuestasBalizaVacia.update({
-                            (PropuestasBalizaVacia.idBaliza eq idBaliza) and
-                            (PropuestasBalizaVacia.id neq propuestaId) and
-                            (PropuestasBalizaVacia.estado eq "pendiente")
-                        }) { it[estado] = "rechazada" }
-
-                        // 6. Eliminar la baliza vacía
-                        BalizasVacias.deleteWhere { BalizasVacias.id eq idBaliza }
-
-                        idExpo
                     }
                 } else {
                     // Rechazar: solo actualizar estado

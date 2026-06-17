@@ -74,7 +74,8 @@ fun Route.invitationRoutes() {
                             fechaFin = row[PropuestasBalizaVacia.fechaFin],
                             precio = row[PropuestasBalizaVacia.precio],
                             categoria = row[PropuestasBalizaVacia.categoria],
-                            idUsuarioSender = senderRow[Usuarios.id].value
+                            idUsuarioSender = senderRow[Usuarios.id].value,
+                            nombreEspacio = row[BalizasVacias.titulo]
                         )
                     }
             }
