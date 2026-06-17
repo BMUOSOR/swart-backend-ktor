@@ -63,7 +63,7 @@ fun Route.invitationRoutes() {
                             idInvitacion = row[PropuestasBalizaVacia.id].value,
                             idExposicion = row[PropuestasBalizaVacia.idBaliza].value,
                             tituloExposicion = row[PropuestasBalizaVacia.titulo],
-                            exposicionImgUrl = null,
+                            exposicionImgUrl = row[PropuestasBalizaVacia.categoria],
                             idArtistaSender = senderId,
                             nombreArtistaSender = senderNombre.trim(),
                             avatarArtistaSender = senderAvatar,
