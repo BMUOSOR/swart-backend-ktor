@@ -13,10 +13,13 @@ data class InvitationDto(
     val avatarArtistaSender: String?,
     val estado: String, // pendiente / aceptada / rechazada
     val tipo: String = "invitacion",
+    // Campos de detalle (sólo presentes cuando tipo == "propuesta")
     val descrip: String? = null,
     val fechaInicio: String? = null,
     val fechaFin: String? = null,
-    val precio: Double? = null
+    val precio: Double? = null,
+    val categoria: String? = null,
+    val idUsuarioSender: Long? = null   // ID de usuario para abrir chat
 )
 
 @Serializable
