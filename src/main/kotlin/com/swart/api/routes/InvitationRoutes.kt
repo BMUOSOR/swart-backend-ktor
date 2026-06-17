@@ -68,7 +68,11 @@ fun Route.invitationRoutes() {
                             nombreArtistaSender = senderNombre.trim(),
                             avatarArtistaSender = senderAvatar,
                             estado = row[PropuestasBalizaVacia.estado],
-                            tipo = "propuesta"
+                            tipo = "propuesta",
+                            descrip = row[PropuestasBalizaVacia.descrip],
+                            fechaInicio = row[PropuestasBalizaVacia.fechaInicio],
+                            fechaFin = row[PropuestasBalizaVacia.fechaFin],
+                            precio = row[PropuestasBalizaVacia.precio]
                         )
                     }
             }
