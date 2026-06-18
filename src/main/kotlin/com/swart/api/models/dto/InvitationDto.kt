@@ -20,7 +20,8 @@ data class InvitationDto(
     val precio: Double? = null,
     val categoria: String? = null,
     val idUsuarioSender: Long? = null,   // ID de usuario para abrir chat
-    val nombreEspacio: String? = null    // título de la baliza vacía
+    val nombreEspacio: String? = null,   // título de la baliza vacía
+    val archivoPdf: String? = null       // URL del PDF adjunto en la propuesta
 )
 
 @Serializable

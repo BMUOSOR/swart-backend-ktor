@@ -77,7 +77,8 @@ fun Route.exhibitionRoutes() {
                     nombreLugar = row[Exposiciones.nombreLugar],
                     ubicacion = row[Exposiciones.ubicacion],
                     precio = row[Exposiciones.precio],
-                    score = row[Exposiciones.score]
+                    score = row[Exposiciones.score],
+                    idBalizaVacia = row[Exposiciones.idBalizaVacia]
                 )
             }
         }
