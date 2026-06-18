@@ -14,4 +14,5 @@ object PropuestasBalizaVacia : LongIdTable("\"PropuestaBalizaVacia\"") {
     val categoria     = text("\"categoria\"").nullable()
     val estado        = text("\"estado\"").default("pendiente") // pendiente / aceptada / rechazada
     val fechaCreacion = text("\"fechaCreacion\"").default("")
+    val archivoPdf    = text("\"archivoPdf\"").nullable()        // URL del PDF adjunto en Supabase Storage
 }

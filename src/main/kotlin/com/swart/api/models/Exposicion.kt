@@ -18,6 +18,7 @@ object Exposiciones : LongIdTable("\"Exposicion\"", "\"idExposicion\"") {
     val nombreLugar = text("\"nombre_lugar\"").nullable()
     val esColaborativa = bool("\"es_colaborativa\"").default(false)
     val categoria = text("\"categoria\"").nullable()
+    val idBalizaVacia  = long("\"idBalizaVacia\"").nullable()    // id de la BalizaVacia de origen (si viene de propuesta)
 }
 
 object ArtistaExposiciones : org.jetbrains.exposed.sql.Table("\"ArtistaExposicion\"") {

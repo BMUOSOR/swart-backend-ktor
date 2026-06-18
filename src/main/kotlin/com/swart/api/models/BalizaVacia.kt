@@ -15,4 +15,5 @@ object BalizasVacias : LongIdTable("\"BalizaVacia\"") {
     val plantas       = text("\"plantas\"").nullable()       // texto libre: "3"
     val salas         = text("\"salas\"").nullable()          // JSON: [{"nombre":"Sala A","superficie":"80m²"}]
     val fotos         = text("\"fotos\"").nullable()           // JSON: ["url1","url2"]
+    val activa        = bool("\"activa\"").default(true)       // false cuando su propuesta fue aceptada
 }

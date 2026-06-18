@@ -70,7 +70,8 @@ data class PropuestaRequest(
     val fechaInicio: String? = null,
     val fechaFin: String? = null,
     val precio: Double? = null,
-    val categoria: String? = null
+    val categoria: String? = null,
+    val archivoPdf: String? = null   // URL del PDF en Supabase Storage (opcional)
 )
 
 @Serializable
@@ -87,7 +88,8 @@ data class PropuestaDto(
     val precio: Double?,
     val categoria: String?,
     val estado: String,
-    val fechaCreacion: String
+    val fechaCreacion: String,
+    val archivoPdf: String? = null
 )
 
 @Serializable
@@ -155,7 +157,7 @@ fun Route.mapRoutes() {
         get("/balizas-vacias") {
             try {
                 val list = transaction {
-                    BalizasVacias.selectAll().map { row ->
+                    BalizasVacias.selectAll().where { BalizasVacias.activa eq true }.map { row ->
                         EmptyBalizaDto(
                             id             = row[BalizasVacias.id].value,
                             lat            = row[BalizasVacias.lat],
@@ -317,6 +319,7 @@ fun Route.mapRoutes() {
                         it[categoria]     = req.categoria
                         it[estado]        = "pendiente"
                         it[fechaCreacion] = now
+                        it[archivoPdf]    = req.archivoPdf
                     }.value
                 }
                 call.respond(HttpStatusCode.Created, mapOf("idPropuesta" to newId))
@@ -345,7 +348,8 @@ fun Route.mapRoutes() {
                                 precio        = row[PropuestasBalizaVacia.precio],
                                 categoria     = row[PropuestasBalizaVacia.categoria],
                                 estado        = row[PropuestasBalizaVacia.estado],
-                                fechaCreacion = row[PropuestasBalizaVacia.fechaCreacion]
+                                fechaCreacion = row[PropuestasBalizaVacia.fechaCreacion],
+                                archivoPdf    = row[PropuestasBalizaVacia.archivoPdf]
                             )
                         }
                 }
@@ -375,7 +379,8 @@ fun Route.mapRoutes() {
                                 precio        = row[PropuestasBalizaVacia.precio],
                                 categoria     = row[PropuestasBalizaVacia.categoria],
                                 estado        = row[PropuestasBalizaVacia.estado],
-                                fechaCreacion = row[PropuestasBalizaVacia.fechaCreacion]
+                                fechaCreacion = row[PropuestasBalizaVacia.fechaCreacion],
+                                archivoPdf    = row[PropuestasBalizaVacia.archivoPdf]
                             )
                         }
                 }
@@ -449,6 +454,7 @@ fun Route.mapRoutes() {
                                 it[precio]      = datos.precio
                                 it[ubicacion]   = ubicacionStr
                                 it[nombreLugar] = datos.nombreEspacio
+                                it[idBalizaVacia] = datos.idBaliza
                             }.value
 
                             // 4. Asociar artista a la exposición
@@ -474,8 +480,10 @@ fun Route.mapRoutes() {
                                 (PropuestasBalizaVacia.estado eq "pendiente")
                             }) { it[estado] = "rechazada" }
 
-                            // 7. Eliminar la baliza vacía
-                            BalizasVacias.deleteWhere { BalizasVacias.id eq datos.idBaliza }
+                            // 7. Marcar la baliza vacía como inactiva (no la borramos para poder navegar a sus datos)
+                            BalizasVacias.update({ BalizasVacias.id eq datos.idBaliza }) {
+                                it[BalizasVacias.activa] = false
+                            }
 
                             idExpo
                         }

@@ -232,7 +232,8 @@ fun Route.exhibitionRoutes() {
                     obras = artworks,
                     tags = tags,
                     esColaborativa = expoRow[Exposiciones.esColaborativa],
-                    artistas = artistas
+                    artistas = artistas,
+                    idBalizaVacia = expoRow[Exposiciones.idBalizaVacia]
                 )
             }
 

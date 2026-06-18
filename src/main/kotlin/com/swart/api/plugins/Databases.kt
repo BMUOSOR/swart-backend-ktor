@@ -67,6 +67,10 @@ fun Application.configureDatabases() {
                 exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"dimensiones\" TEXT DEFAULT NULL;")
                 exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"salas\" TEXT DEFAULT NULL;")
                 exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"fotos\" TEXT DEFAULT NULL;")
+                // Nuevas migraciones
+                exec("ALTER TABLE \"PropuestaBalizaVacia\" ADD COLUMN IF NOT EXISTS \"archivoPdf\" TEXT;")
+                exec("ALTER TABLE \"BalizaVacia\" ADD COLUMN IF NOT EXISTS \"activa\" BOOLEAN DEFAULT TRUE;")
+                exec("ALTER TABLE \"Exposicion\" ADD COLUMN IF NOT EXISTS \"idBalizaVacia\" BIGINT;")
             } catch (e: Exception) {
                 e.printStackTrace()
             }
